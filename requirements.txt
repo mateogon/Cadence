@@ -1,0 +1,7 @@
+customtkinter
+pygame
+whisperx
+torch
+soundfile
+numpy
+supertonic

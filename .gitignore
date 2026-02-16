@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+temp_extraction/
+library/*
+!library/.gitkeep
+player_settings.json
+.DS_Store
