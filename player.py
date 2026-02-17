@@ -1,4 +1,15 @@
 import sys
+# DPI Awareness before any Tk/ctk objects
+if sys.platform.startswith("win"):
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(2) # 2 = per-monitor DPI aware
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 import os
 import json
 import tkinter as tk
@@ -9,8 +20,17 @@ from pathlib import Path
 # --- Configuration ---
 SETTINGS_FILE = "player_settings.json"
 DEFAULT_SETTINGS = {
-    "chain_size": 3, "font_size": 70, "dark_mode": True, 
-    "gap_threshold": 0.3, "sync_offset": -0.15
+    "settings_version": 4,
+    "chain_size": 5,
+    "font_size": 150,
+    "dark_mode": True,
+    "gap_threshold": 0.3,
+    "sync_offset": 0,
+    "font_scale_center": 1.25,
+    "font_scale_side": 1.00,
+    "slot_step": 1.20,
+    "slot_padding": 0.06,
+    "fit_mode": "shrink"
 }
 
 class FlowReader:
@@ -28,6 +48,8 @@ class FlowReader:
         self.words = []
         self.is_playing = False
         self.settings = self.load_settings()
+        self.running = True
+        self._after_id = None
         
         # --- UI Setup ---
         self.root.title(f"Reading: {self.meta.get('title', 'Book')}")
@@ -38,6 +60,12 @@ class FlowReader:
         self.dim_col = "#555555"
         
         self.root.configure(bg=self.bg_col)
+        self._font_cache = {}
+        
+        # Persistent fonts (negative size = pixels)
+        self.main_font = font.Font(family="Arial", size=-180, weight="bold")
+        self.side_font = font.Font(family="Arial", size=-120, weight="normal")
+
         self.canvas = tk.Canvas(root, bg=self.bg_col, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         
@@ -57,6 +85,8 @@ class FlowReader:
         self.root.bind("[", lambda e: self.change_chain(-2))
         self.root.bind("<Up>", lambda e: self.change_chapter(1))
         self.root.bind("<Down>", lambda e: self.change_chapter(-1))
+        self.root.bind("<Prior>", lambda e: self.change_font(10))   # PageUp
+        self.root.bind("<Next>",  lambda e: self.change_font(-10))  # PageDown
         self.root.bind("<Escape>", lambda e: self.on_close())
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -75,10 +105,12 @@ class FlowReader:
             self.draw_message(f"Chapter {self.current_chapter}")
 
         self.update_loop()
+        print(f"DEBUG: FlowReader initialized. Font Size: {self.settings['font_size']}")
 
     def load_chapter(self, chapter_num):
-        # Format: ch_001.wav
-        wav_file = self.content_dir / f"ch_{chapter_num:03d}.wav"
+        # Format: ch_001.wav is in 'audio', ch_001.json is in 'content'
+        audio_dir = self.book_path / "audio"
+        wav_file = audio_dir / f"ch_{chapter_num:03d}.wav"
         json_file = self.content_dir / f"ch_{chapter_num:03d}.json"
         
         if not wav_file.exists():
@@ -117,42 +149,88 @@ class FlowReader:
         with open(SETTINGS_FILE, 'w') as f:
             json.dump(self.settings, f)
             
+        self.running = False
+        if self._after_id:
+            self.root.after_cancel(self._after_id)
         self.root.destroy()
 
-    # --- Standard Rendering & Playback Logic (From previous version) ---
     def inject_gaps(self, data):
-        # ... (Same logic as V4) ...
-        # Simplified for brevity here, paste the V4 logic
-        return data # Placeholder
+        """Adds empty 'gap' entries between words based on timing threshold."""
+        if not data: return []
+        new_data = []
+        threshold = self.settings.get("gap_threshold", 0.3)
+        
+        for i in range(len(data)):
+            new_data.append(data[i])
+            if i < len(data) - 1:
+                gap = data[i+1]["start"] - data[i]["end"]
+                if gap > threshold:
+                    new_data.append({
+                        "word": "", 
+                        "start": data[i]["end"], 
+                        "end": data[i+1]["start"],
+                        "is_gap": True
+                    })
+        return new_data
 
     def render(self, center_idx):
-        # ... (Same render logic as V4) ...
-        # Need to ensure self.words exists before rendering
-        if not self.words: return
+        if not self.words:
+            return
+
         self.canvas.delete("all")
         w_cv = self.canvas.winfo_width()
         h_cv = self.canvas.winfo_height()
         cx, cy = w_cv // 2, h_cv // 2
+
+        # Hard budget based on canvas pixels (not fs)
+        center_max_w = int(w_cv * 0.92)
+
+        def ellipsize(text, fnt, max_w):
+            if fnt.measure(text) <= max_w:
+                return text
+            if max_w <= fnt.measure("…"):
+                return "…"
+            s = text
+            while s and fnt.measure(s + "…") > max_w:
+                s = s[:-1]
+            return (s + "…") if s else "…"
+
+        word = self.words[center_idx].get("word", "")
+        txt = ellipsize(word, self.main_font, center_max_w)
+
+        # Nuclear Bypass: Use a raw Tcl-style font tuple with NEGATIVE size (pixels)
+        sz_px = int(self.settings["font_size"] * 1.25)
+        raw_font = ("Arial", -sz_px, "bold")
         
-        fs = self.settings["font_size"]
-        
-        try:
-            center_text = self.words[center_idx]["word"]
-            self.canvas.create_text(cx, cy, text=center_text, 
-                                    font=("Arial", int(fs*1.1), "bold"), fill=self.center_col)
-        except: pass
+        item = self.canvas.create_text(cx, cy, text=txt, font=raw_font, fill=self.center_col)
+
+        # PROOF: print what Tk actually used + the real pixel height
+        if center_idx % 20 == 0:
+            bbox = self.canvas.bbox(item)
+            actual_font = self.canvas.itemcget(item, "font")
+            print(f"--- PROOF (v12) ---")
+            print(f"RAW FONT USED: {raw_font}")
+            print(f"CANVAS reported font: {actual_font}")
+            print(f"BBOX Height: {(bbox[3]-bbox[1]) if bbox else 0}")
+            print(f"Canvas Size: {w_cv}x{h_cv}")
 
     def update_loop(self):
+        if not self.running: return
+        
         if self.is_playing and self.words:
             t = self.get_current_time() + self.settings["sync_offset"]
             idx = self.find_index_at_time(t)
-            if idx != -1: self.render(idx)
-        self.root.after(16, self.update_loop)
+            if idx != -1: 
+                self.render(idx)
+            else:
+                # print(f"DEBUG: No word at t={t:.2f}")
+                pass
+        self._after_id = self.root.after(16, self.update_loop)
 
     def get_current_time(self):
-        if not pygame.mixer.music.get_busy() and not self.is_playing:
-             return self.start_offset
-        return (pygame.mixer.music.get_pos() / 1000.0) + self.start_offset
+        if self.is_playing:
+            return (pygame.mixer.music.get_pos() / 1000.0) + self.start_offset
+        return self.start_offset
 
     def toggle_play(self, event=None):
         if self.is_playing:
@@ -160,22 +238,22 @@ class FlowReader:
             self.is_playing = False
             self.start_offset = self.get_current_time()
         else:
-            pygame.mixer.music.unpause()
-            if not pygame.mixer.music.get_busy():
+            if pygame.mixer.music.get_pos() == -1: # Music not playing/stopped
                 pygame.mixer.music.play(start=self.start_offset)
+            else:
+                pygame.mixer.music.unpause()
             self.is_playing = True
             
     def seek(self, amt):
         t = max(0, self.get_current_time() + amt)
         self.start_offset = t
-        pygame.mixer.music.rewind()
         pygame.mixer.music.play(start=t)
         if not self.is_playing: pygame.mixer.music.pause()
 
     def find_index_at_time(self, t):
-        # Simple loop
+        # We can optimize this with binary search if words are many
         for i, w in enumerate(self.words):
-            if w.get("start",0) <= t <= w.get("end",0): return i
+            if w["start"] <= t <= w["end"]: return i
         return -1
         
     def set_index_from_time(self, t):
@@ -184,6 +262,16 @@ class FlowReader:
 
     def change_chain(self, amt):
         self.settings["chain_size"] = max(1, self.settings["chain_size"]+amt)
+        self.render(self.find_index_at_time(self.get_current_time() + self.settings["sync_offset"]) or 0)
+
+    def change_font(self, amt):
+        self.settings["font_size"] = max(10, self.settings["font_size"] + amt)
+        # push directly into the persistent font (negative = pixels)
+        self.main_font.configure(size=-int(self.settings["font_size"] * 1.25), weight="bold")
+        self.side_font.configure(size=-int(self.settings["font_size"] * 1.00), weight="normal")
+
+        idx = self.find_index_at_time(self.get_current_time() + self.settings["sync_offset"])
+        self.render(idx if idx != -1 else 0)
     
     def draw_message(self, msg):
         self.canvas.delete("all")
@@ -192,6 +280,19 @@ class FlowReader:
     def load_settings(self):
         if os.path.exists(SETTINGS_FILE):
             try:
-                with open(SETTINGS_FILE, 'r') as f: return {**DEFAULT_SETTINGS, **json.load(f)}
-            except: pass
+                with open(SETTINGS_FILE, 'r') as f:
+                    loaded = json.load(f)
+                if loaded.get("settings_version") != DEFAULT_SETTINGS["settings_version"]:
+                    return DEFAULT_SETTINGS
+                return {**DEFAULT_SETTINGS, **loaded}
+            except:
+                pass
         return DEFAULT_SETTINGS
+
+    def get_font(self, family, size, weight="normal"):
+        key = (family, size, weight)
+        f = self._font_cache.get(key)
+        if f is None:
+            f = font.Font(family=family, size=size, weight=weight)
+            self._font_cache[key] = f
+        return f

@@ -2,6 +2,18 @@ import customtkinter as ctk
 import threading
 import tkinter as tk
 import sys
+
+# DPI Awareness before any Tk/ctk objects
+if sys.platform.startswith("win"):
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(2) # 2 = per-monitor DPI aware
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
 from system.book_manager import BookManager
 from player import FlowReader
 
@@ -88,7 +100,9 @@ class LibrarianApp(ctk.CTk):
         ctk.CTkLabel(card, text=book["title"], font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=10, pady=(10, 0))
         
         # Progress info
-        info = f"Ch {book['last_chapter']} / {book['total_chapters']}  •  Voice: {book.get('voice','?')}"
+        last = book.get('last_chapter', 0)
+        total = book.get('total_chapters', book.get('chapters', '?'))
+        info = f"Ch {last} / {total}  •  Voice: {book.get('voice','?')}"
         ctk.CTkLabel(card, text=info, text_color="gray").pack(anchor="w", padx=10, pady=(0, 10))
         
         # Play Button
@@ -123,14 +137,13 @@ class LibrarianApp(ctk.CTk):
         self.withdraw() # Hide Librarian
         
         try:
-            # We use standard TK for the player because it embeds pygame better/differently
-            root = tk.Tk()
+            # Shift to Toplevel to avoid interpreter conflicts with CTk
+            player_win = tk.Toplevel(self)
+            player_win.title("AudioBook Forge Player")
+            player_win.geometry("1100x600")
             
-            # Position the player window relative to current screen
-            root.geometry("1100x600")
-            
-            app = FlowReader(root, book_data["path"])
-            root.mainloop()
+            app = FlowReader(player_win, book_data["path"])
+            # No mainloop here, it uses LibrarianApp's loop
             
         except Exception as e:
             print(f"Player Error: {e}")

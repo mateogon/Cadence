@@ -5,3 +5,4 @@ torch
 soundfile
 numpy
 supertonic
+onnxruntime-gpu

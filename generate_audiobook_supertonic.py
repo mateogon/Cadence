@@ -181,7 +181,7 @@ def process_folder(input_dir, output_dir, voice_name):
                     if not clean_chunk: continue
                     
                     # Synthesize
-                    wav, _ = tts.synthesize(clean_chunk, voice_style=voice_style)
+                    wav, _ = tts.synthesize(clean_chunk, voice_style=voice_style, lang="en")
                     audio_segments.append(wav)
 
                 if audio_segments:
