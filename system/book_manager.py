@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import subprocess
+import sys
 import time
 import threading
 import re
@@ -16,6 +17,104 @@ LIBRARY_PATH = Path("library")
 LIBRARY_PATH.mkdir(exist_ok=True)
 
 class BookManager:
+    @staticmethod
+    def _detect_gpu_free_memory_mib():
+        """Best-effort query of free VRAM via nvidia-smi."""
+        try:
+            result = subprocess.run(
+                [
+                    "nvidia-smi",
+                    "--query-gpu=memory.free",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            if result.returncode != 0:
+                return None
+            values = []
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    values.append(int(line))
+                except ValueError:
+                    continue
+            if not values:
+                return None
+            return max(values)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _get_synthesis_worker_count():
+        """
+        Select chapter synthesis worker count.
+        Override with AUDIOBOOKFORGE_SYNTH_WORKERS.
+        """
+        env_value = os.getenv("AUDIOBOOKFORGE_SYNTH_WORKERS", "").strip()
+        if env_value:
+            try:
+                return max(1, int(env_value))
+            except ValueError:
+                pass
+        return 1
+
+    @staticmethod
+    def _get_tts_max_chunk_chars():
+        """
+        Max chars per synthesis chunk.
+        Override with AUDIOBOOKFORGE_TTS_MAX_CHARS.
+        """
+        env_value = os.getenv("AUDIOBOOKFORGE_TTS_MAX_CHARS", "").strip()
+        if env_value:
+            try:
+                return max(400, int(env_value))
+            except ValueError:
+                pass
+        return 1600
+
+    @staticmethod
+    def _get_whisperx_model_name():
+        return os.getenv("AUDIOBOOKFORGE_WHISPERX_MODEL", "small").strip() or "small"
+
+    @staticmethod
+    def _get_whisperx_batch_size():
+        env_value = os.getenv("AUDIOBOOKFORGE_WHISPERX_BATCH_SIZE", "").strip()
+        if env_value:
+            try:
+                return max(1, int(env_value))
+            except ValueError:
+                pass
+        return 24
+
+    @staticmethod
+    def _get_whisperx_compute_type():
+        env_value = os.getenv("AUDIOBOOKFORGE_WHISPERX_COMPUTE_TYPE", "").strip()
+        if env_value:
+            return env_value
+        return "float16"
+
+    @staticmethod
+    def _get_whisperx_python():
+        env_value = os.getenv("AUDIOBOOKFORGE_WHISPERX_PYTHON", "").strip()
+        if env_value:
+            return env_value
+        # Prefer project-local venv Python so alignment does not accidentally run
+        # in conda base/system Python.
+        project_root = Path(__file__).resolve().parent.parent
+        if os.name == "nt":
+            candidate = project_root / "venv" / "Scripts" / "python.exe"
+        else:
+            candidate = project_root / "venv" / "bin" / "python"
+        if candidate.exists():
+            return str(candidate)
+        return sys.executable
+
     @staticmethod
     def get_books():
         """Scans library for valid books."""
@@ -278,59 +377,97 @@ class BookManager:
             # --- STEP 2: AUDIO GENERATION (Supertonic) ---
             progress_callback(0.4, "Step 2/3: Synthesizing Audio...")
             log("--- Step 2: Audio Synthesis ---")
-            
-            from generate_audiobook_supertonic import init_tts_engine, get_smart_chunks, sanitize_text
-            tts = init_tts_engine() 
+
+            from adapters.supertonic_backend import SupertonicBackend
+
             txt_files = sorted(content_dir.glob("*.txt"))
             log(f"Found {len(txt_files)} text chapters for voice '{voice}'.")
-            
-            supported_chars = tts.model.text_processor.supported_character_set
-            
+
             audio_dir = book_dir / "audio"
             audio_dir.mkdir(exist_ok=True)
 
-            import numpy as np
-            for i, txt in enumerate(txt_files):
-                pct = 0.4 + (0.3 * (i / len(txt_files)))
-                progress_callback(pct, f"Synthesizing Ch {i+1}...")
-                
-                out_wav = audio_dir / f"{txt.stem}.wav"
-                
-                # Check if audio already exists (Resume capability)
-                if out_wav.exists() and out_wav.stat().st_size > 0:
-                    log(f"Skipping {txt.name} (Audio exists)")
-                    continue
+            if not txt_files:
+                log("No text chapters found for synthesis.")
+            else:
+                worker_count = BookManager._get_synthesis_worker_count()
+                tts_max_chars = BookManager._get_tts_max_chunk_chars()
+                free_mib = BookManager._detect_gpu_free_memory_mib()
+                if free_mib is not None:
+                    log(f"GPU free memory: {free_mib} MiB")
+                log(f"Using {worker_count} synthesis worker(s).")
+                log(f"TTS max chunk size: {tts_max_chars} chars.")
 
-                log(f"Synthesizing {txt.name}...")
-                
-                with open(txt, 'r', encoding='utf-8') as f:
-                    text_content = f.read().strip()
-                
-                if not text_content: continue
+                skipped_count = 0
+                synth_targets = []
+                for txt in txt_files:
+                    out_wav = audio_dir / f"{txt.stem}.wav"
+                    if out_wav.exists() and out_wav.stat().st_size > 0:
+                        log(f"Skipping {txt.name} (Audio exists)")
+                        skipped_count += 1
+                        continue
+                    synth_targets.append((txt, out_wav))
 
-                # Chunking matches the CLI script for better stability/quality
-                chunks = get_smart_chunks(text_content)
-                audio_segments = []
-                
-                try:
-                    voice_style = tts.get_voice_style(voice)
-                except:
-                    voice_style = tts.get_voice_style(list(tts.voices.keys())[0])
+                total_files = len(txt_files)
+                completed_count = skipped_count
 
-                for chunk in chunks:
-                    # Use the library's own sanitization + my extra map if needed?
-                    # Actually sanitize_text from generator is quite thorough
-                    clean_chunk = sanitize_text(chunk, supported_chars)
-                    if not clean_chunk: continue
-                    
-                    wav, _ = tts.synthesize(clean_chunk, voice_style=voice_style, lang="en")
-                    audio_segments.append(wav)
+                def update_synth_progress(chapter_label):
+                    pct = 0.4 + (0.3 * (completed_count / max(total_files, 1)))
+                    progress_callback(pct, f"Synthesizing {chapter_label}...")
 
-                if audio_segments:
-                    # Concat and save using the library's method (safer)
-                    final_wav = np.concatenate(audio_segments, axis=1)
-                    tts.save_audio(final_wav, str(out_wav))
-                    log(f"Saved audio: {out_wav.name}")
+                if worker_count <= 1 or len(synth_targets) <= 1:
+                    backend = SupertonicBackend()
+                    backend.ensure_model()
+                    for txt, out_wav in synth_targets:
+                        log(f"Synthesizing {txt.name}...")
+                        with open(txt, "r", encoding="utf-8") as f:
+                            text_content = f.read().strip()
+                        if text_content:
+                            wav = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                            if wav is not None:
+                                backend.save_audio(wav, out_wav)
+                                log(f"Saved audio: {out_wav.name}")
+                        completed_count += 1
+                        update_synth_progress(txt.stem)
+                else:
+                    thread_local = threading.local()
+
+                    def get_thread_backend():
+                        if not hasattr(thread_local, "backend"):
+                            backend = SupertonicBackend()
+                            backend.ensure_model()
+                            thread_local.backend = backend
+                        return thread_local.backend
+
+                    def synthesize_task(task):
+                        txt_path, out_wav_path = task
+                        with open(txt_path, "r", encoding="utf-8") as f:
+                            text_content = f.read().strip()
+                        if not text_content:
+                            return ("empty", txt_path.name, out_wav_path.name)
+                        backend = get_thread_backend()
+                        wav_data = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                        if wav_data is None:
+                            return ("empty", txt_path.name, out_wav_path.name)
+                        backend.save_audio(wav_data, out_wav_path)
+                        return ("saved", txt_path.name, out_wav_path.name)
+
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+                        futures = {
+                            executor.submit(synthesize_task, task): task
+                            for task in synth_targets
+                        }
+                        for future in concurrent.futures.as_completed(futures):
+                            txt, _ = futures[future]
+                            try:
+                                status, txt_name, wav_name = future.result()
+                                if status == "saved":
+                                    log(f"Saved audio: {wav_name}")
+                                else:
+                                    log(f"Skipped {txt_name} (Empty text)")
+                            except Exception as e:
+                                log(f"Error synthesizing {txt.name}: {e}")
+                            completed_count += 1
+                            update_synth_progress(txt.stem)
 
             # Update status to 'audio_ready' but NOT complete yet
             metadata["status"] = "synthesized"
@@ -340,22 +477,20 @@ class BookManager:
             # --- STEP 3: TIMESTAMPS (WhisperX) ---
             progress_callback(0.7, "Step 3/3: Aligning Text...")
             log("--- Step 3: Timestamp Alignment (WhisperX) ---")
-            import whisperx
-            import torch
-            
-            log(f"Torch version: {torch.__version__}")
-            log(f"CUDA available: {torch.cuda.is_available()}")
-            if torch.cuda.is_available():
-                log(f"CUDA device: {torch.cuda.get_device_name(0)}")
-            
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            log(f"Using device: {device}")
-            try:
-                model = whisperx.load_model("small", device, compute_type="int8")
-            except:
-                log("Failed to load model on GPU, falling back to CPU")
-                device = "cpu"
-                model = whisperx.load_model("small", device, compute_type="int8")
+            whisperx_python = BookManager._get_whisperx_python()
+            whisperx_model_name = BookManager._get_whisperx_model_name()
+            whisperx_batch_size = BookManager._get_whisperx_batch_size()
+            whisperx_compute_type = BookManager._get_whisperx_compute_type()
+            whisperx_device = os.getenv("AUDIOBOOKFORGE_WHISPERX_DEVICE", "auto").strip() or "auto"
+            log(f"WhisperX python: {whisperx_python}")
+            log(
+                f"WhisperX config: model={whisperx_model_name}, "
+                f"compute_type={whisperx_compute_type}, batch_size={whisperx_batch_size}, "
+                f"device={whisperx_device}"
+            )
+            whisperx_script = Path(__file__).resolve().parent.parent / "scripts" / "benchmark_whisperx_align_only.py"
+            if not whisperx_script.exists():
+                raise FileNotFoundError(f"WhisperX alignment script not found: {whisperx_script}")
             
             wav_files = sorted(audio_dir.glob("*.wav"))
             log(f"Aligning {len(wav_files)} audio files...")
@@ -369,49 +504,50 @@ class BookManager:
                      log(f"Skipping {wav.name} (Timestamps exist)")
                      continue
 
-                log(f"Aligning {wav.name}...")
-                
-                audio = whisperx.load_audio(str(wav))
-                result = model.transcribe(audio, batch_size=16)
-                
-                # WhisperX Alignment
-                model_a, alignment_meta = whisperx.load_align_model(language_code=result["language"], device=device)
-                aligned_result = whisperx.align(result["segments"], model_a, alignment_meta, audio, device, return_char_alignments=False)
-                
-                # Extract raw ASR word list with timestamps
-                asr_words = []
-                for segment in aligned_result["segments"]:
-                    for word in segment["words"]:
-                        if 'start' in word:
-                            asr_words.append({
-                                "word": word["word"],
-                                "start": word["start"],
-                                "end": word["end"]
-                            })
-                
-                # --- ROBUST ALIGNMENT WITH ORIGINAL TEXT ---
-                log(f"Aligning ASR data with original text: {txt.name}")
-                
-                # Read original text
-                with open(txt, 'r', encoding='utf-8') as f:
-                    original_text = f.read()
-                
-                # Perform robust alignment
-                try:
-                    final_word_list = BookManager.align_timestamps(original_text, asr_words)
-                    
-                    # Calculate coverage stats for log
-                    total_chars = len(original_text)
-                    timed_chars = sum(len(w['word']) for w in final_word_list if w['end'] > 0)
-                    log(f"Alignment coverage (approx): {timed_chars/total_chars:.1%}")
-                    
-                except Exception as e:
-                    log(f"Alignment Verification Failed: {e}. Falling back to ASR output.")
-                    print(f"Alignment Verification Failed: {e}. Falling back to ASR output.")
-                    final_word_list = asr_words
+                source_txt = content_dir / f"{wav.stem}.txt"
+                if not source_txt.exists():
+                    raise FileNotFoundError(f"Missing source text for {wav.name}: {source_txt}")
 
-                with open(out_json, "w", encoding='utf-8') as f:
-                    json.dump(final_word_list, f, indent=2)
+                log(f"Aligning {wav.name} with {source_txt.name}...")
+                chapter_report = content_dir / f"{wav.stem}.whisperx_report.json"
+                cmd = [
+                    whisperx_python,
+                    str(whisperx_script),
+                    str(wav),
+                    str(source_txt),
+                    "--whisper-model",
+                    whisperx_model_name,
+                    "--whisper-batch-size",
+                    str(whisperx_batch_size),
+                    "--whisper-compute-type",
+                    whisperx_compute_type,
+                    "--device",
+                    whisperx_device,
+                    "--output-json",
+                    str(out_json),
+                    "--report-json",
+                    str(chapter_report),
+                ]
+                result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+                if result.returncode != 0:
+                    log(f"WhisperX failed for {wav.name}")
+                    log(result.stdout[-2000:] if result.stdout else "")
+                    log(result.stderr[-2000:] if result.stderr else "")
+                    continue
+
+                if chapter_report.exists():
+                    try:
+                        rep = json.loads(chapter_report.read_text(encoding="utf-8"))
+                        totals = rep.get("timing_seconds", {})
+                        used_device = rep.get("device", whisperx_device)
+                        log(
+                            f"Aligned {wav.name}: "
+                            f"device={used_device} "
+                            f"whisper={totals.get('whisperx_transcribe_and_align', 0):.2f}s "
+                            f"total={totals.get('total', 0):.2f}s"
+                        )
+                    except Exception:
+                        pass
                 log(f"Saved timestamps: {out_json.name}")
 
             # --- FINALIZE METADATA ---

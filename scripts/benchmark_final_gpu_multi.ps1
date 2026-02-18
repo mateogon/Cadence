@@ -1,0 +1,3 @@
+$env:AUDIOBOOKFORGE_FORCE_CPU="0"
+$env:AUDIOBOOKFORGE_USE_TENSORRT="0"
+python benchmark_supertonic_single_file_chunks.py "C:\Users\mateo\Desktop\AudioBookForge\library\Dennett,_Daniel_Clement_-_Intuition_Pumps_and_Other_Tools_for_Thinking\content\ch_004.txt" --voice M3 --max-chars 500 --workers "2,3,4" --repeats 2 --output-csv "benchmark_ch004_final_gpu_multi.csv"

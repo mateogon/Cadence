@@ -5,9 +5,14 @@ import argparse
 import time
 import numpy as np
 import soundfile as sf
-import onnxruntime as ort
 from unicodedata import normalize
 from tqdm import tqdm  # pip install tqdm
+
+# Reduce ONNX Runtime warning spam by default; override with AUDIOBOOKFORGE_ORT_LOG_LEVEL.
+os.environ.setdefault("ORT_LOG_SEVERITY_LEVEL", os.getenv("AUDIOBOOKFORGE_ORT_LOG_LEVEL", "3"))
+os.environ.setdefault("ORT_LOG_VERBOSITY_LEVEL", "0")
+
+import onnxruntime as ort
 
 # Try to import supertonic; handle error if not found
 try:
@@ -18,45 +23,75 @@ except ImportError:
 
 # --- Configuration ---
 DEFAULT_VOICE = "M3"  # A solid default voice
+DEFAULT_ONNX_PROVIDER_ORDER = [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider",
+]
+
+UNICODE_PUNCT_TRANSLATIONS = str.maketrans({
+    "\u2018": "'",   # left single quote
+    "\u2019": "'",   # right single quote / curly apostrophe
+    "\u201B": "'",   # single high-reversed-9 quotation mark
+    "\u2032": "'",   # prime
+    "\u02BC": "'",   # modifier letter apostrophe
+    "\u2010": "-",   # hyphen
+    "\u2011": "-",   # non-breaking hyphen
+    "\u2012": "-",   # figure dash
+    "\u2013": "-",   # en dash
+    "\u2014": ", ",  # em dash -> comma pause
+    "\u2015": ", ",  # horizontal bar -> comma pause
+    "\u2212": "-",   # minus sign
+    "\u2026": "...", # ellipsis
+    "\u00A0": " ",   # no-break space
+})
 
 # --- CUDA Setup (Windows Specific) ---
-# Auto-detects installed CUDA versions and adds the latest to the DLL path
-CUDA_BASE_PATH = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA"
-if os.path.exists(CUDA_BASE_PATH) and hasattr(os, 'add_dll_directory'):
-    # Find all v* directories
-    cuda_dirs = []
-    try:
-        for entry in os.scandir(CUDA_BASE_PATH):
-            if entry.is_dir() and entry.name.startswith("v"):
-                cuda_dirs.append(entry.path)
-    except OSError as e:
-        print(f"⚠️  Error scanning CUDA directory: {e}")
+# Optional: add system CUDA DLL path. Disabled by default to avoid conflicts with
+# PyTorch bundled CUDA/cuDNN DLLs (can trigger WinError 127 on torch import).
+USE_SYSTEM_CUDA_DLL_PATH = os.getenv("AUDIOBOOKFORGE_ADD_SYSTEM_CUDA_DLL_PATH", "").strip() == "1"
+if USE_SYSTEM_CUDA_DLL_PATH:
+    CUDA_BASE_PATH = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA"
+    if os.path.exists(CUDA_BASE_PATH) and hasattr(os, 'add_dll_directory'):
+        # Find all v* directories
+        cuda_dirs = []
+        try:
+            for entry in os.scandir(CUDA_BASE_PATH):
+                if entry.is_dir() and entry.name.startswith("v"):
+                    cuda_dirs.append(entry.path)
+        except OSError as e:
+            print(f"⚠️  Error scanning CUDA directory: {e}")
 
-    # Sort reverse alphabetically (e.g., v12.8 > v12.4)
-    cuda_dirs.sort(reverse=True)
-    
-    cuda_found = False
-    for cuda_dir in cuda_dirs:
-        bin_path = os.path.join(cuda_dir, "bin")
-        if os.path.exists(bin_path):
-            try:
-                os.add_dll_directory(bin_path)
-                print(f"✅ Added CUDA DLL path: {bin_path}")
-                cuda_found = True
-                break # Stop after adding the latest valid one
-            except OSError:
-                print(f"⚠️  Failed to add CUDA DLL path: {bin_path}")
-    
-    if not cuda_found:
-         print(f"⚠️  No valid CUDA v*\\bin directories found in {CUDA_BASE_PATH}")
-elif os.name == 'nt':
-     print("ℹ️  CUDA base directory not found or add_dll_directory not supported.")
+        # Sort reverse alphabetically (e.g., v12.8 > v12.4)
+        cuda_dirs.sort(reverse=True)
+        
+        cuda_found = False
+        for cuda_dir in cuda_dirs:
+            bin_path = os.path.join(cuda_dir, "bin")
+            if os.path.exists(bin_path):
+                try:
+                    os.add_dll_directory(bin_path)
+                    print(f"✅ Added CUDA DLL path: {bin_path}")
+                    cuda_found = True
+                    break # Stop after adding the latest valid one
+                except OSError:
+                    print(f"⚠️  Failed to add CUDA DLL path: {bin_path}")
+        
+        if not cuda_found:
+             print(f"⚠️  No valid CUDA v*\\bin directories found in {CUDA_BASE_PATH}")
+    elif os.name == 'nt':
+         print("ℹ️  CUDA base directory not found or add_dll_directory not supported.")
 
 # --- Helper Functions ---
 
 def sanitize_text(text, supported_chars):
     """Cleans text to ensure compatibility with the model."""
-    normalized = normalize("NFKD", text)
+    normalized = normalize("NFKC", text.translate(UNICODE_PUNCT_TRANSLATIONS))
+
+    # If apostrophes are unsupported, avoid splitting words like "don't" -> "don t".
+    # We collapse in-word apostrophes to produce "dont" as the safer fallback.
+    if "'" not in supported_chars:
+        normalized = re.sub(r"(?<=\w)'(?=\w)", "", normalized)
+
     output = []
     
     for ch in normalized:
@@ -64,7 +99,12 @@ def sanitize_text(text, supported_chars):
             output.append(ch)
         else:
             # Replace unsupported non-space chars with space to prevent word merging
-            if not ch.isspace():
+            if ch.isspace():
+                output.append(" ")
+            elif ch == "'":
+                # Standalone apostrophes can be dropped safely if unsupported.
+                continue
+            else:
                 output.append(" ")
     
     # Collapse multiple spaces into one
@@ -115,15 +155,64 @@ def init_tts_engine():
     """Initializes Supertonic with GPU checks."""
     print("Initializing TTS Engine...")
 
-    providers = ort.get_available_providers()
-    
-    if 'CUDAExecutionProvider' in providers:
-        print(f"🚀 CUDA Detected. Running on GPU ({providers[0]})")
-    else:
-        print(f"⚠️  CUDA NOT Detected. Running on CPU (This will be slower). Available: {providers}")
+    # Default to error-only ORT logs unless user explicitly asks for warnings/info.
+    # 0=verbose,1=info,2=warning,3=error,4=fatal
+    log_level = int(os.getenv("AUDIOBOOKFORGE_ORT_LOG_LEVEL", "3"))
+    os.environ["ORT_LOG_SEVERITY_LEVEL"] = str(log_level)
+    try:
+        ort.set_default_logger_severity(log_level)
+    except Exception:
+        pass
 
-    # Initialize
-    return TTS(auto_download=True)
+    providers = ort.get_available_providers()
+    print(f"ONNX available providers: {providers}")
+
+    # Supertonic defaults to CPU in this package build, so we patch provider
+    # order before constructing TTS to prefer TensorRT/CUDA when available.
+    force_cpu = os.getenv("AUDIOBOOKFORGE_FORCE_CPU", "").strip() == "1"
+    use_tensorrt = os.getenv("AUDIOBOOKFORGE_USE_TENSORRT", "").strip() == "1"
+    cuda_only = os.getenv("AUDIOBOOKFORGE_CUDA_ONLY", "").strip() == "1"
+
+    if force_cpu:
+        requested = ["CPUExecutionProvider"]
+    elif cuda_only and "CUDAExecutionProvider" in providers:
+        # Strict CUDA mode can reduce CPU fallback/copy overhead, but may fail if
+        # the model requires unsupported ops on CUDA.
+        requested = ["CUDAExecutionProvider"]
+    else:
+        preferred = list(DEFAULT_ONNX_PROVIDER_ORDER)
+        if use_tensorrt:
+            preferred = ["TensorrtExecutionProvider"] + preferred
+        requested = [p for p in preferred if p in providers]
+        if not requested:
+            requested = ["CPUExecutionProvider"]
+
+    try:
+        import supertonic.loader as st_loader
+        import supertonic.config as st_config
+
+        st_loader.DEFAULT_ONNX_PROVIDERS = requested
+        st_config.DEFAULT_ONNX_PROVIDERS = requested
+        print(f"Supertonic requested providers: {requested}")
+    except Exception as e:
+        print(f"⚠️  Could not patch Supertonic providers: {e}")
+
+    tts = TTS(auto_download=True)
+
+    # Report real providers actually bound to the model sessions.
+    try:
+        sessions = [
+            tts.model.dp_ort,
+            tts.model.text_enc_ort,
+            tts.model.vector_est_ort,
+            tts.model.vocoder_ort,
+        ]
+        active = sorted({tuple(s.get_providers()) for s in sessions})
+        print(f"Supertonic active providers per session: {active}")
+    except Exception as e:
+        print(f"⚠️  Could not read active providers: {e}")
+
+    return tts
 
 # --- Main Logic ---
 
