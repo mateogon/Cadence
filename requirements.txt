@@ -1,8 +1,9 @@
 customtkinter
 pygame
-whisperx
-torch
 soundfile
-numpy
+numpy<2.0
 supertonic
 onnxruntime-gpu
+watchfiles
+librosa
+python-dotenv
