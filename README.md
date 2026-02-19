@@ -44,7 +44,7 @@ If you hit dependency conflicts between Supertonic and WhisperX, use a split env
 
 Then point Cadence to that Python:
 ```powershell
-$env:AUDIOBOOKFORGE_WHISPERX_PYTHON="C:\Users\mateo\Desktop\AudioBookForge\venv_whisperx\Scripts\python.exe"
+$env:CADENCE_WHISPERX_PYTHON="C:\Users\mateo\Desktop\AudioBookForge\venv_whisperx\Scripts\python.exe"
 ```
 
 ## Run
@@ -62,15 +62,15 @@ python main.py --debug
 Cadence loads `.env` automatically at startup.
 
 Useful keys:
-- `AUDIOBOOKFORGE_SYNTH_WORKERS`
-- `AUDIOBOOKFORGE_TTS_MAX_CHARS`
-- `AUDIOBOOKFORGE_FORCE_CPU`
-- `AUDIOBOOKFORGE_CUDA_ONLY`
-- `AUDIOBOOKFORGE_WHISPERX_MODEL`
-- `AUDIOBOOKFORGE_WHISPERX_BATCH_SIZE`
-- `AUDIOBOOKFORGE_WHISPERX_COMPUTE_TYPE`
-- `AUDIOBOOKFORGE_WHISPERX_DEVICE`
-- `AUDIOBOOKFORGE_WHISPERX_PYTHON`
+- `CADENCE_SYNTH_WORKERS`
+- `CADENCE_TTS_MAX_CHARS`
+- `CADENCE_FORCE_CPU`
+- `CADENCE_CUDA_ONLY`
+- `CADENCE_WHISPERX_MODEL`
+- `CADENCE_WHISPERX_BATCH_SIZE`
+- `CADENCE_WHISPERX_COMPUTE_TYPE`
+- `CADENCE_WHISPERX_DEVICE`
+- `CADENCE_WHISPERX_PYTHON`
 
 ## Benchmarks
 Repository includes benchmark helpers:

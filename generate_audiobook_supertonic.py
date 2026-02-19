@@ -8,8 +8,8 @@ import soundfile as sf
 from unicodedata import normalize
 from tqdm import tqdm  # pip install tqdm
 
-# Reduce ONNX Runtime warning spam by default; override with AUDIOBOOKFORGE_ORT_LOG_LEVEL.
-os.environ.setdefault("ORT_LOG_SEVERITY_LEVEL", os.getenv("AUDIOBOOKFORGE_ORT_LOG_LEVEL", "3"))
+# Reduce ONNX Runtime warning spam by default; override with CADENCE_ORT_LOG_LEVEL.
+os.environ.setdefault("ORT_LOG_SEVERITY_LEVEL", os.getenv("CADENCE_ORT_LOG_LEVEL", "3"))
 os.environ.setdefault("ORT_LOG_VERBOSITY_LEVEL", "0")
 
 import onnxruntime as ort
@@ -48,7 +48,7 @@ UNICODE_PUNCT_TRANSLATIONS = str.maketrans({
 # --- CUDA Setup (Windows Specific) ---
 # Optional: add system CUDA DLL path. Disabled by default to avoid conflicts with
 # PyTorch bundled CUDA/cuDNN DLLs (can trigger WinError 127 on torch import).
-USE_SYSTEM_CUDA_DLL_PATH = os.getenv("AUDIOBOOKFORGE_ADD_SYSTEM_CUDA_DLL_PATH", "").strip() == "1"
+USE_SYSTEM_CUDA_DLL_PATH = os.getenv("CADENCE_ADD_SYSTEM_CUDA_DLL_PATH", "").strip() == "1"
 if USE_SYSTEM_CUDA_DLL_PATH:
     CUDA_BASE_PATH = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA"
     if os.path.exists(CUDA_BASE_PATH) and hasattr(os, 'add_dll_directory'):
@@ -157,7 +157,7 @@ def init_tts_engine():
 
     # Default to error-only ORT logs unless user explicitly asks for warnings/info.
     # 0=verbose,1=info,2=warning,3=error,4=fatal
-    log_level = int(os.getenv("AUDIOBOOKFORGE_ORT_LOG_LEVEL", "3"))
+    log_level = int(os.getenv("CADENCE_ORT_LOG_LEVEL", "3"))
     os.environ["ORT_LOG_SEVERITY_LEVEL"] = str(log_level)
     try:
         ort.set_default_logger_severity(log_level)
@@ -169,9 +169,9 @@ def init_tts_engine():
 
     # Supertonic defaults to CPU in this package build, so we patch provider
     # order before constructing TTS to prefer TensorRT/CUDA when available.
-    force_cpu = os.getenv("AUDIOBOOKFORGE_FORCE_CPU", "").strip() == "1"
-    use_tensorrt = os.getenv("AUDIOBOOKFORGE_USE_TENSORRT", "").strip() == "1"
-    cuda_only = os.getenv("AUDIOBOOKFORGE_CUDA_ONLY", "").strip() == "1"
+    force_cpu = os.getenv("CADENCE_FORCE_CPU", "").strip() == "1"
+    use_tensorrt = os.getenv("CADENCE_USE_TENSORRT", "").strip() == "1"
+    cuda_only = os.getenv("CADENCE_CUDA_ONLY", "").strip() == "1"
 
     if force_cpu:
         requested = ["CPUExecutionProvider"]

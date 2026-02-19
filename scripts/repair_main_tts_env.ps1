@@ -1,4 +1,4 @@
-# Restore main AudioBookForge venv for Supertonic TTS stability.
+# Restore main Cadence main venv for Supertonic TTS stability.
 # Run inside: .\venv\Scripts\Activate.ps1
 
 python -m pip install --upgrade pip

@@ -54,9 +54,9 @@ class BookManager:
     def _get_synthesis_worker_count():
         """
         Select chapter synthesis worker count.
-        Override with AUDIOBOOKFORGE_SYNTH_WORKERS.
+        Override with CADENCE_SYNTH_WORKERS.
         """
-        env_value = os.getenv("AUDIOBOOKFORGE_SYNTH_WORKERS", "").strip()
+        env_value = os.getenv("CADENCE_SYNTH_WORKERS", "").strip()
         if env_value:
             try:
                 return max(1, int(env_value))
@@ -68,9 +68,9 @@ class BookManager:
     def _get_tts_max_chunk_chars():
         """
         Max chars per synthesis chunk.
-        Override with AUDIOBOOKFORGE_TTS_MAX_CHARS.
+        Override with CADENCE_TTS_MAX_CHARS.
         """
-        env_value = os.getenv("AUDIOBOOKFORGE_TTS_MAX_CHARS", "").strip()
+        env_value = os.getenv("CADENCE_TTS_MAX_CHARS", "").strip()
         if env_value:
             try:
                 return max(400, int(env_value))
@@ -80,11 +80,11 @@ class BookManager:
 
     @staticmethod
     def _get_whisperx_model_name():
-        return os.getenv("AUDIOBOOKFORGE_WHISPERX_MODEL", "small").strip() or "small"
+        return os.getenv("CADENCE_WHISPERX_MODEL", "small").strip() or "small"
 
     @staticmethod
     def _get_whisperx_batch_size():
-        env_value = os.getenv("AUDIOBOOKFORGE_WHISPERX_BATCH_SIZE", "").strip()
+        env_value = os.getenv("CADENCE_WHISPERX_BATCH_SIZE", "").strip()
         if env_value:
             try:
                 return max(1, int(env_value))
@@ -94,14 +94,14 @@ class BookManager:
 
     @staticmethod
     def _get_whisperx_compute_type():
-        env_value = os.getenv("AUDIOBOOKFORGE_WHISPERX_COMPUTE_TYPE", "").strip()
+        env_value = os.getenv("CADENCE_WHISPERX_COMPUTE_TYPE", "").strip()
         if env_value:
             return env_value
         return "float16"
 
     @staticmethod
     def _get_whisperx_python():
-        env_value = os.getenv("AUDIOBOOKFORGE_WHISPERX_PYTHON", "").strip()
+        env_value = os.getenv("CADENCE_WHISPERX_PYTHON", "").strip()
         if env_value:
             return env_value
         # Prefer project-local venv Python so alignment does not accidentally run
@@ -481,7 +481,7 @@ class BookManager:
             whisperx_model_name = BookManager._get_whisperx_model_name()
             whisperx_batch_size = BookManager._get_whisperx_batch_size()
             whisperx_compute_type = BookManager._get_whisperx_compute_type()
-            whisperx_device = os.getenv("AUDIOBOOKFORGE_WHISPERX_DEVICE", "auto").strip() or "auto"
+            whisperx_device = os.getenv("CADENCE_WHISPERX_DEVICE", "auto").strip() or "auto"
             log(f"WhisperX python: {whisperx_python}")
             log(
                 f"WhisperX config: model={whisperx_model_name}, "
