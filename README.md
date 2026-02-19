@@ -13,10 +13,8 @@ Cadence is an immersive reading pipeline: **EPUB -> chapter text -> audiobook au
 3. Alignment (WhisperX) -> `library/<book>/content/ch_XXX.json`
 4. Player reads audio + timestamps for RSVP/immersive reading.
 
-## Media (Placeholders)
-![Library View Placeholder](docs/media/library-view.png)
-![Player View Placeholder](docs/media/player-view.png)
-![Import To Playback GIF Placeholder](docs/media/import-to-playback.gif)
+## Media
+![Library While Importing](docs/media/library-importing.png)
 
 ## Requirements
 - Windows 10/11
