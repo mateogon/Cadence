@@ -101,13 +101,6 @@ class LibraryView(ctk.CTkFrame):
         self.scroll_frame = ctk.CTkScrollableFrame(self.main_area, label_text="")
         self.scroll_frame.pack(fill="both", expand=True)
 
-        self.status_bar = ctk.CTkProgressBar(self, mode="determinate")
-        self.status_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
-        self.status_bar.set(0)
-
-        self.lbl_status = ctk.CTkLabel(self, text="Ready", height=20, font=("Arial", 10))
-        self.lbl_status.grid(row=2, column=0, columnspan=2, sticky="ew")
-
         self.refresh_library()
 
     def log(self, message):
@@ -179,20 +172,19 @@ class LibraryView(ctk.CTkFrame):
         self.btn_import.configure(state="disabled")
         voice = self.voice_select.get()
         self.log(f"--- Starting Import: {path} ---")
+        self.app.set_import_status(0.0, "Step 1/3: Extracting EPUB...")
         thread = threading.Thread(target=self.run_import_thread, args=(path, voice), daemon=True)
         thread.start()
 
     def run_import_thread(self, path, voice):
         def progress(pct, msg):
-            self.after(0, lambda: self.status_bar.set(pct))
-            self.after(0, lambda: self.lbl_status.configure(text=msg))
+            self.after(0, lambda: self.app.set_import_status(pct, msg))
 
         success = BookManager.import_book(path, voice, progress, log_callback=self.log)
 
         def finalize():
             self.btn_import.configure(state="normal")
-            self.status_bar.set(0)
-            self.lbl_status.configure(text="Ready" if success else "Error")
+            self.app.set_import_status(0.0, "Ready" if success else "Import failed")
             self.log("--- Import Finished ---" if success else "--- Import Failed ---")
             self.refresh_library()
 

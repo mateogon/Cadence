@@ -31,6 +31,7 @@ class App(ctk.CTk):
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
 
         self.views_container = ctk.CTkFrame(self, fg_color="transparent")
         self.views_container.grid(row=0, column=0, sticky="nsew")
@@ -47,6 +48,23 @@ class App(ctk.CTk):
             debug=self.debug,
         )
         self.player_view.grid(row=0, column=0, sticky="nsew")
+
+        self.import_footer = ctk.CTkFrame(self)
+        self.import_footer.grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 8))
+        self.import_footer.grid_columnconfigure(0, weight=1)
+
+        self.import_progress = ctk.CTkProgressBar(self.import_footer, mode="determinate")
+        self.import_progress.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 0))
+        self.import_progress.set(0)
+
+        self.import_status_label = ctk.CTkLabel(
+            self.import_footer,
+            text="Ready",
+            height=18,
+            font=ctk.CTkFont(size=11),
+            text_color="gray",
+        )
+        self.import_status_label.grid(row=1, column=0, sticky="w", padx=10, pady=(2, 8))
 
         self.protocol("WM_DELETE_WINDOW", self.on_app_close)
         self.show_library()
@@ -70,6 +88,11 @@ class App(ctk.CTk):
         self.debug_log("App close requested")
         self.player_view.safe_close()
         self.destroy()
+
+    def set_import_status(self, progress, message):
+        progress = max(0.0, min(1.0, float(progress)))
+        self.import_progress.set(progress)
+        self.import_status_label.configure(text=message)
 
 
 def build_parser():

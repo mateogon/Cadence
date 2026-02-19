@@ -375,7 +375,7 @@ class BookManager:
                     metadata = json.load(f)
 
             # --- STEP 2: AUDIO GENERATION (Supertonic) ---
-            progress_callback(0.4, "Step 2/3: Synthesizing Audio...")
+            progress_callback(0.4, "Step 2/3: Synthesizing audio...")
             log("--- Step 2: Audio Synthesis ---")
 
             from adapters.supertonic_backend import SupertonicBackend
@@ -412,7 +412,10 @@ class BookManager:
 
                 def update_synth_progress(chapter_label):
                     pct = 0.4 + (0.3 * (completed_count / max(total_files, 1)))
-                    progress_callback(pct, f"Synthesizing {chapter_label}...")
+                    progress_callback(
+                        pct,
+                        f"Step 2/3: Synthesizing ({completed_count}/{total_files}) {chapter_label}",
+                    )
 
                 if worker_count <= 1 or len(synth_targets) <= 1:
                     backend = SupertonicBackend()
@@ -475,7 +478,7 @@ class BookManager:
                 json.dump(metadata, f, indent=4)
 
             # --- STEP 3: TIMESTAMPS (WhisperX) ---
-            progress_callback(0.7, "Step 3/3: Aligning Text...")
+            progress_callback(0.7, "Step 3/3: Aligning text...")
             log("--- Step 3: Timestamp Alignment (WhisperX) ---")
             whisperx_python = BookManager._get_whisperx_python()
             whisperx_model_name = BookManager._get_whisperx_model_name()
@@ -493,11 +496,15 @@ class BookManager:
                 raise FileNotFoundError(f"WhisperX alignment script not found: {whisperx_script}")
             
             wav_files = sorted(audio_dir.glob("*.wav"))
+            total_wavs = len(wav_files)
             log(f"Aligning {len(wav_files)} audio files...")
             
             for i, wav in enumerate(wav_files):
-                pct = 0.7 + (0.3 * (i / len(wav_files)))
-                progress_callback(pct, f"Aligning Ch {i+1}...")
+                pct = 0.7 + (0.3 * (i / max(total_wavs, 1)))
+                progress_callback(
+                    pct,
+                    f"Step 3/3: Aligning ({i + 1}/{total_wavs}) {wav.stem}",
+                )
                 
                 out_json = content_dir / f"{wav.stem}.json"
                 if out_json.exists() and out_json.stat().st_size > 0:
