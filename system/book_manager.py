@@ -18,6 +18,49 @@ LIBRARY_PATH.mkdir(exist_ok=True)
 
 class BookManager:
     @staticmethod
+    def _get_extract_worker_count():
+        """
+        Select text extraction worker count.
+        Override with CADENCE_EXTRACT_WORKERS.
+        Keep a moderate default for speed while avoiding excessive process churn.
+        """
+        env_value = os.getenv("CADENCE_EXTRACT_WORKERS", "").strip()
+        if env_value:
+            try:
+                return max(1, int(env_value))
+            except ValueError:
+                pass
+        cpu = os.cpu_count() or 4
+        return max(1, min(cpu, 4))
+
+    @staticmethod
+    def _resolve_stored_epub(book_dir, metadata=None):
+        book_dir = Path(book_dir)
+        source_dir = book_dir / "source"
+        if metadata and metadata.get("source_epub"):
+            candidate = book_dir / str(metadata.get("source_epub"))
+            if candidate.exists():
+                return candidate
+        if source_dir.exists():
+            epubs = sorted(source_dir.glob("*.epub"))
+            if epubs:
+                return epubs[0]
+        return None
+
+    @staticmethod
+    def get_stored_epub(book_path):
+        book_dir = Path(book_path)
+        metadata = {}
+        meta_path = book_dir / "metadata.json"
+        if meta_path.exists():
+            try:
+                metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                metadata = {}
+        epub_path = BookManager._resolve_stored_epub(book_dir, metadata=metadata)
+        return str(epub_path) if epub_path else ""
+
+    @staticmethod
     def _detect_gpu_free_memory_mib():
         """Best-effort query of free VRAM via nvidia-smi."""
         try:
@@ -119,17 +162,62 @@ class BookManager:
     def get_books():
         """Scans library for valid books."""
         books = []
-        if not LIBRARY_PATH.exists(): return []
-        
+        if not LIBRARY_PATH.exists():
+            return []
+
         for folder in LIBRARY_PATH.iterdir():
             meta_path = folder / "metadata.json"
             if folder.is_dir() and meta_path.exists():
                 try:
-                    with open(meta_path, "r") as f:
+                    with open(meta_path, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                        data["path"] = str(folder)
-                        books.append(data)
-                except:
+
+                    content_dir = folder / "content"
+                    audio_dir = folder / "audio"
+
+                    txt_stems = {
+                        p.stem
+                        for p in content_dir.glob("ch_*.txt")
+                        if p.is_file() and p.stat().st_size > 0
+                    }
+                    content_chapters = len(txt_stems)
+
+                    if content_chapters == 0:
+                        # Fallback to metadata if chapter files are not yet present.
+                        content_chapters = int(
+                            data.get("total_chapters", data.get("chapters", 0)) or 0
+                        )
+
+                    audio_ready = sum(
+                        1
+                        for stem in txt_stems
+                        if (audio_dir / f"{stem}.wav").exists()
+                        and (audio_dir / f"{stem}.wav").stat().st_size > 0
+                    )
+                    aligned_ready = sum(
+                        1
+                        for stem in txt_stems
+                        if (content_dir / f"{stem}.json").exists()
+                        and (content_dir / f"{stem}.json").stat().st_size > 0
+                    )
+
+                    is_incomplete = (
+                        content_chapters > 0
+                        and (audio_ready < content_chapters or aligned_ready < content_chapters)
+                    )
+
+                    data["content_chapters"] = content_chapters
+                    data["audio_chapters_ready"] = audio_ready
+                    data["aligned_chapters_ready"] = aligned_ready
+                    data["audio_missing"] = max(0, content_chapters - audio_ready)
+                    data["aligned_missing"] = max(0, content_chapters - aligned_ready)
+                    data["is_incomplete"] = is_incomplete
+                    stored_epub = BookManager._resolve_stored_epub(folder, metadata=data)
+                    data["stored_epub_path"] = str(stored_epub) if stored_epub else ""
+                    data["stored_epub_exists"] = bool(stored_epub)
+                    data["path"] = str(folder)
+                    books.append(data)
+                except Exception:
                     continue
         return books
 
@@ -229,36 +317,77 @@ class BookManager:
 
         try:
             epub_file = Path(epub_path)
-            book_name = epub_file.stem.replace(" ", "_") # Clean name
-            book_dir = LIBRARY_PATH / book_name
+            if not epub_file.exists():
+                raise FileNotFoundError(f"EPUB not found: {epub_file}")
+
+            # If using stored source EPUB (library/<book>/source/*.epub), lock to that book folder.
+            book_dir = None
+            try:
+                resolved = epub_file.resolve()
+                if (
+                    resolved.parent.name.lower() == "source"
+                    and resolved.parent.parent.parent.resolve() == LIBRARY_PATH.resolve()
+                ):
+                    book_dir = resolved.parent.parent
+            except Exception:
+                pass
+
+            if book_dir is None:
+                book_name = epub_file.stem.replace(" ", "_")  # Clean name
+                book_dir = LIBRARY_PATH / book_name
+            else:
+                book_name = book_dir.name
+
             content_dir = book_dir / "content"
+            source_dir = book_dir / "source"
 
             log(f"Starting import for: {epub_file.name}")
             log(f"Target directory: {book_dir}")
 
             # 1. Setup Folders & Check Resume
             extract_needed = True
-            if book_dir.exists(): 
+            if book_dir.exists():
+                existing_txt = list((book_dir / "content").glob("ch_*.txt")) if (book_dir / "content").exists() else []
                 meta_path = book_dir / "metadata.json"
                 if meta_path.exists():
                     try:
-                        with open(meta_path, 'r') as f:
+                        with open(meta_path, "r", encoding="utf-8") as f:
                             existing_meta = json.load(f)
-                        
-                        # Resume if text is ready or audio is partially done
+
+                        # Keep prior voice on resume so chapter output remains consistent.
+                        existing_voice = str(existing_meta.get("voice", "")).strip()
+                        if existing_voice:
+                            if existing_voice != voice:
+                                log(
+                                    f"Using existing book voice '{existing_voice}' "
+                                    f"instead of selected '{voice}' for resume."
+                                )
+                            voice = existing_voice
+
+                        # Resume if text/audio pipeline already started.
                         status = existing_meta.get("status")
-                        if status in ["text_only", "synthesized", "complete"]:
+                        if status in ["text_only", "synthesized", "complete"] or existing_txt:
                             log(f"Resuming import for: {book_name} (Status: {status})")
                             extract_needed = False
-                    except:
+                    except Exception:
                         pass
-                
-                if extract_needed:
-                    log(f"Removing existing directory: {book_dir}")
-                    shutil.rmtree(book_dir)
-                    content_dir.mkdir(parents=True)
+                elif existing_txt:
+                    log(f"Resuming import for: {book_name} (Detected existing chapter text)")
+                    extract_needed = False
             else:
                 content_dir.mkdir(parents=True)
+
+            content_dir.mkdir(parents=True, exist_ok=True)
+
+            # Keep original source EPUB in book folder for one-click resume.
+            source_dir.mkdir(parents=True, exist_ok=True)
+            stored_epub = source_dir / epub_file.name
+            try:
+                if stored_epub.resolve() != epub_file.resolve():
+                    shutil.copy2(epub_file, stored_epub)
+            except Exception:
+                # If resolve/copy fails, continue pipeline without blocking.
+                pass
 
             # --- STEP 1: EXTRACTION (Calibre) ---
             if extract_needed:
@@ -278,7 +407,14 @@ class BookManager:
                 log(f"Unpacking EPUB to {temp_dir}...")
                 cmd = [CALIBRE_PATH, str(epub_file), str(temp_dir)]
                 
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace')
+                result = subprocess.run(
+                    cmd,
+                    shell=False,
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace',
+                )
                 if result.returncode != 0:
                     log(f"Calibre Error: {result.stderr}")
                     return False
@@ -324,7 +460,7 @@ class BookManager:
                 log(f"Processing {len(html_files)} files...")
 
                 # Parallel Extraction
-                max_workers = min(os.cpu_count() or 4, 8)
+                max_workers = BookManager._get_extract_worker_count()
                 log(f"Starting parallel extraction with {max_workers} workers...")
                 
                 def convert_chunk(args):
@@ -335,17 +471,65 @@ class BookManager:
                     
                     out_txt_name = f"ch_{idx+1:03d}.txt"
                     out_txt = content_dir / out_txt_name
+                    # Keep .txt extension so calibre resolves output plugin correctly.
+                    out_txt_tmp = content_dir / f"{out_txt.stem}.part.txt"
                     
                     log(f"Converting {html_path.name} -> {out_txt_name}")
-                    subprocess.run([
-                        CALIBRE_PATH, str(isolated_html), str(out_txt), 
-                        "--txt-output-format=plain", "--smarten-punctuation"
-                    ], shell=True, capture_output=True, encoding='utf-8', errors='replace')
-                    return idx + 1
+                    cmd = [
+                        CALIBRE_PATH,
+                        str(isolated_html),
+                        str(out_txt_tmp),
+                        "--txt-output-format=plain",
+                        "--smarten-punctuation",
+                    ]
+                    for attempt in (1, 2):
+                        try:
+                            result = subprocess.run(
+                                cmd,
+                                shell=False,
+                                capture_output=True,
+                                encoding="utf-8",
+                                errors="replace",
+                            )
+                            if result.returncode == 0 and out_txt_tmp.exists() and out_txt_tmp.stat().st_size > 0:
+                                os.replace(out_txt_tmp, out_txt)
+                                return idx + 1
+
+                            err_tail = (result.stderr or "").strip()[-600:]
+                            out_tail = (result.stdout or "").strip()[-300:]
+                            log(
+                                f"Failed conversion (attempt {attempt}/2): {html_path.name} "
+                                f"(rc={result.returncode})"
+                            )
+                            if err_tail:
+                                log(f"stderr: {err_tail}")
+                            if out_tail:
+                                log(f"stdout: {out_tail}")
+                            if out_txt_tmp.exists():
+                                try:
+                                    out_txt_tmp.unlink()
+                                except Exception:
+                                    pass
+                            if attempt == 1:
+                                time.sleep(0.15)
+                        except Exception as exc:
+                            log(f"Exception converting {html_path.name} (attempt {attempt}/2): {exc}")
+                            if attempt == 1:
+                                time.sleep(0.15)
+                        finally:
+                            if out_txt_tmp.exists():
+                                try:
+                                    out_txt_tmp.unlink()
+                                except Exception:
+                                    pass
+                    return None
 
                 tasks = [(i, h) for i, h in enumerate(html_files) if h.stat().st_size >= 300]
-                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    results = list(executor.map(convert_chunk, tasks))
+                if max_workers <= 1:
+                    results = [r for r in map(convert_chunk, tasks) if r is not None]
+                else:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        results = [r for r in executor.map(convert_chunk, tasks) if r is not None]
                 
                 chapter_count = len(results)
 
@@ -363,7 +547,8 @@ class BookManager:
                     "chapters": chapter_count,
                     "total_chapters": chapter_count,
                     "last_chapter": 0,
-                    "cover": ""
+                    "cover": "",
+                    "source_epub": str(Path("source") / epub_file.name),
                 }
                 with open(book_dir / "metadata.json", "w") as f:
                     json.dump(metadata, f, indent=4)
@@ -373,10 +558,11 @@ class BookManager:
                 # Load existing metadata
                 with open(book_dir / "metadata.json", "r") as f:
                     metadata = json.load(f)
+                metadata["source_epub"] = str(Path("source") / epub_file.name)
 
-            # --- STEP 2: AUDIO GENERATION (Supertonic) ---
-            progress_callback(0.4, "Step 2/3: Synthesizing audio...")
-            log("--- Step 2: Audio Synthesis ---")
+            # --- STEP 2/3: STREAMING SYNTH + ALIGN ---
+            progress_callback(0.4, "Step 2/3: Streaming synthesis + alignment...")
+            log("--- Step 2/3: Streaming Chapter Pipeline (TTS -> WhisperX) ---")
 
             from adapters.supertonic_backend import SupertonicBackend
 
@@ -386,8 +572,23 @@ class BookManager:
             audio_dir = book_dir / "audio"
             audio_dir.mkdir(exist_ok=True)
 
+            whisperx_python = BookManager._get_whisperx_python()
+            whisperx_model_name = BookManager._get_whisperx_model_name()
+            whisperx_batch_size = BookManager._get_whisperx_batch_size()
+            whisperx_compute_type = BookManager._get_whisperx_compute_type()
+            whisperx_device = os.getenv("CADENCE_WHISPERX_DEVICE", "auto").strip() or "auto"
+            whisperx_script = Path(__file__).resolve().parent / "whisperx_align_cli.py"
+            whisperx_worker_script = Path(__file__).resolve().parent / "whisperx_align_worker.py"
+            if not whisperx_script.exists():
+                raise FileNotFoundError(f"WhisperX alignment script not found: {whisperx_script}")
+            if not whisperx_worker_script.exists():
+                raise FileNotFoundError(
+                    f"WhisperX alignment worker script not found: {whisperx_worker_script}"
+                )
+            project_root = Path(__file__).resolve().parent.parent
+
             if not txt_files:
-                log("No text chapters found for synthesis.")
+                log("No text chapters found for synthesis/alignment.")
             else:
                 worker_count = BookManager._get_synthesis_worker_count()
                 tts_max_chars = BookManager._get_tts_max_chunk_chars()
@@ -396,172 +597,360 @@ class BookManager:
                     log(f"GPU free memory: {free_mib} MiB")
                 log(f"Using {worker_count} synthesis worker(s).")
                 log(f"TTS max chunk size: {tts_max_chars} chars.")
+                log(f"WhisperX python: {whisperx_python}")
+                log(
+                    f"WhisperX config: model={whisperx_model_name}, "
+                    f"compute_type={whisperx_compute_type}, batch_size={whisperx_batch_size}, "
+                    f"device={whisperx_device}"
+                )
 
-                skipped_count = 0
-                synth_targets = []
+                class WhisperXImportWorker:
+                    def __init__(self):
+                        self.proc = None
+                        self.ready_info = None
+                        self.disabled = False
+                        self.start_timeout_s = float(
+                            os.getenv("CADENCE_WHISPERX_START_TIMEOUT_SEC", "240")
+                        )
+                        self.job_timeout_s = float(
+                            os.getenv("CADENCE_WHISPERX_CHAPTER_TIMEOUT_SEC", "300")
+                        )
+
+                    def start(self):
+                        if self.disabled or self.proc is not None:
+                            return self.proc is not None
+                        cmd = [
+                            whisperx_python,
+                            str(whisperx_worker_script),
+                            "--whisper-model",
+                            whisperx_model_name,
+                            "--whisper-batch-size",
+                            str(whisperx_batch_size),
+                            "--whisper-compute-type",
+                            whisperx_compute_type,
+                            "--device",
+                            whisperx_device,
+                        ]
+                        try:
+                            log(
+                                "Starting WhisperX worker (one-time model load for this import)..."
+                            )
+                            self.proc = subprocess.Popen(
+                                cmd,
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL,
+                                text=True,
+                                encoding="utf-8",
+                                errors="replace",
+                                cwd=str(project_root),
+                                bufsize=1,
+                            )
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                                future = ex.submit(self.proc.stdout.readline)
+                                line = future.result(timeout=self.start_timeout_s)
+                            if not line:
+                                raise RuntimeError("no ready message from WhisperX worker")
+                            msg = json.loads(line.strip())
+                            if msg.get("event") != "ready":
+                                raise RuntimeError(f"unexpected worker message: {msg}")
+                            self.ready_info = msg
+                            log(
+                                "WhisperX worker ready: "
+                                f"device={msg.get('device', whisperx_device)} "
+                                f"compute={msg.get('resolved_compute_type', whisperx_compute_type)}"
+                            )
+                            return True
+                        except Exception as e:
+                            self.disabled = True
+                            log(f"WhisperX worker startup failed, using fallback mode: {e}")
+                            self.stop()
+                            return False
+
+                    def align(self, wav, txt, out_json, report_json, raw_json):
+                        if self.disabled:
+                            return None
+                        if self.proc is None and not self.start():
+                            return None
+                        try:
+                            payload = {
+                                "cmd": "align",
+                                "wav": str(wav),
+                                "txt": str(txt),
+                                "out_json": str(out_json),
+                                "report_json": str(report_json),
+                                "raw_json": str(raw_json),
+                            }
+                            self.proc.stdin.write(json.dumps(payload) + "\n")
+                            self.proc.stdin.flush()
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                                future = ex.submit(self.proc.stdout.readline)
+                                line = future.result(timeout=self.job_timeout_s)
+                            if not line:
+                                raise RuntimeError("worker produced no response")
+                            msg = json.loads(line.strip())
+                            event = msg.get("event")
+                            if event == "aligned":
+                                return msg
+                            if event == "error":
+                                log(f"WhisperX worker error: {msg.get('error', 'unknown error')}")
+                                return None
+                            log(f"WhisperX worker unexpected message: {msg}")
+                            return None
+                        except Exception as e:
+                            log(f"WhisperX worker communication failed: {e}")
+                            self.disabled = True
+                            self.stop()
+                            return None
+
+                    def stop(self):
+                        proc = self.proc
+                        self.proc = None
+                        if proc is None:
+                            return
+                        try:
+                            if proc.stdin:
+                                proc.stdin.write(json.dumps({"cmd": "shutdown"}) + "\n")
+                                proc.stdin.flush()
+                        except Exception:
+                            pass
+                        try:
+                            proc.wait(timeout=3)
+                        except Exception:
+                            try:
+                                proc.kill()
+                            except Exception:
+                                pass
+
+                chapters = []
                 for txt in txt_files:
-                    out_wav = audio_dir / f"{txt.stem}.wav"
-                    if out_wav.exists() and out_wav.stat().st_size > 0:
-                        log(f"Skipping {txt.name} (Audio exists)")
-                        skipped_count += 1
-                        continue
-                    synth_targets.append((txt, out_wav))
-
-                total_files = len(txt_files)
-                completed_count = skipped_count
-
-                def update_synth_progress(chapter_label):
-                    pct = 0.4 + (0.3 * (completed_count / max(total_files, 1)))
-                    progress_callback(
-                        pct,
-                        f"Step 2/3: Synthesizing ({completed_count}/{total_files}) {chapter_label}",
+                    wav_path = audio_dir / f"{txt.stem}.wav"
+                    json_path = content_dir / f"{txt.stem}.json"
+                    has_audio = wav_path.exists() and wav_path.stat().st_size > 0
+                    has_json = json_path.exists() and json_path.stat().st_size > 0
+                    chapters.append(
+                        {
+                            "stem": txt.stem,
+                            "txt": txt,
+                            "wav": wav_path,
+                            "json": json_path,
+                            "has_audio": has_audio,
+                            "has_json": has_json,
+                            "ready": has_audio and has_json,
+                        }
                     )
 
-                if worker_count <= 1 or len(synth_targets) <= 1:
-                    backend = SupertonicBackend()
-                    backend.ensure_model()
-                    for txt, out_wav in synth_targets:
-                        log(f"Synthesizing {txt.name}...")
-                        with open(txt, "r", encoding="utf-8") as f:
-                            text_content = f.read().strip()
-                        if text_content:
-                            wav = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
-                            if wav is not None:
-                                backend.save_audio(wav, out_wav)
-                                log(f"Saved audio: {out_wav.name}")
-                        completed_count += 1
-                        update_synth_progress(txt.stem)
-                else:
-                    thread_local = threading.local()
+                total_chapters = len(chapters)
+                ready_count = sum(1 for c in chapters if c["ready"])
+                whisper_worker = WhisperXImportWorker()
+                metadata["status"] = "processing"
+                metadata["total_chapters"] = total_chapters
+                metadata["last_chapter"] = ready_count
+                with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, indent=4)
 
-                    def get_thread_backend():
-                        if not hasattr(thread_local, "backend"):
+                def update_stream_progress(activity="", chapter_stem=""):
+                    pct = 0.4 + (0.55 * (ready_count / max(total_chapters, 1)))
+                    pct = min(0.95, pct)
+                    detail = f"{activity} {chapter_stem}".strip()
+                    suffix = f" • {detail}" if detail else ""
+                    progress_callback(
+                        pct,
+                        f"Step 2/3: Processing ({ready_count}/{total_chapters} ready){suffix}",
+                    )
+
+                def mark_ready(chapter):
+                    nonlocal ready_count
+                    if chapter["has_audio"] and chapter["has_json"] and not chapter["ready"]:
+                        chapter["ready"] = True
+                        ready_count += 1
+                        metadata["last_chapter"] = ready_count
+                        metadata["status"] = "processing"
+                        with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
+                            json.dump(metadata, f, indent=4)
+                        update_stream_progress("Ready", chapter["stem"])
+
+                def align_one_chapter(chapter):
+                    if chapter["has_json"]:
+                        return True
+                    if not chapter["has_audio"]:
+                        return False
+
+                    source_txt = chapter["txt"]
+                    out_json = chapter["json"]
+                    wav = chapter["wav"]
+                    chapter_report = content_dir / f"{chapter['stem']}.whisperx_report.json"
+                    raw_json = content_dir / f"{chapter['stem']}_raw.json"
+
+                    log(f"Aligning {wav.name} with {source_txt.name}...")
+                    worker_msg = whisper_worker.align(
+                        wav=wav,
+                        txt=source_txt,
+                        out_json=out_json,
+                        report_json=chapter_report,
+                        raw_json=raw_json,
+                    )
+                    if worker_msg is None:
+                        cmd = [
+                            whisperx_python,
+                            str(whisperx_script),
+                            str(wav),
+                            str(source_txt),
+                            "--whisper-model",
+                            whisperx_model_name,
+                            "--whisper-batch-size",
+                            str(whisperx_batch_size),
+                            "--whisper-compute-type",
+                            whisperx_compute_type,
+                            "--device",
+                            whisperx_device,
+                            "--output-json",
+                            str(out_json),
+                            "--report-json",
+                            str(chapter_report),
+                            "--raw-json",
+                            str(raw_json),
+                        ]
+                        result = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            encoding="utf-8",
+                            errors="replace",
+                            cwd=str(project_root),
+                        )
+                        if result.returncode != 0:
+                            log(f"WhisperX failed for {wav.name}")
+                            log(result.stdout[-2000:] if result.stdout else "")
+                            log(result.stderr[-2000:] if result.stderr else "")
+                            return False
+
+                    if chapter_report.exists():
+                        try:
+                            rep = json.loads(chapter_report.read_text(encoding="utf-8"))
+                            totals = rep.get("timing_seconds", {})
+                            used_device = rep.get("device", whisperx_device)
+                            log(
+                                f"Aligned {wav.name}: "
+                                f"device={used_device} "
+                                f"whisper={totals.get('whisperx_transcribe_and_align', 0):.2f}s "
+                                f"total={totals.get('total', 0):.2f}s"
+                            )
+                        except Exception:
+                            pass
+
+                    if out_json.exists() and out_json.stat().st_size > 0:
+                        chapter["has_json"] = True
+                        log(f"Saved timestamps: {out_json.name}")
+                        mark_ready(chapter)
+                        return True
+                    return False
+
+                try:
+                    # First, align any chapters that already have audio from previous runs.
+                    pending_align = [c for c in chapters if c["has_audio"] and not c["has_json"]]
+                    for chapter in pending_align:
+                        align_one_chapter(chapter)
+
+                    synth_targets = [c for c in chapters if not c["has_audio"]]
+                    if worker_count <= 1 or len(synth_targets) <= 1:
+                        if synth_targets:
                             backend = SupertonicBackend()
                             backend.ensure_model()
-                            thread_local.backend = backend
-                        return thread_local.backend
-
-                    def synthesize_task(task):
-                        txt_path, out_wav_path = task
-                        with open(txt_path, "r", encoding="utf-8") as f:
-                            text_content = f.read().strip()
-                        if not text_content:
-                            return ("empty", txt_path.name, out_wav_path.name)
-                        backend = get_thread_backend()
-                        wav_data = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
-                        if wav_data is None:
-                            return ("empty", txt_path.name, out_wav_path.name)
-                        backend.save_audio(wav_data, out_wav_path)
-                        return ("saved", txt_path.name, out_wav_path.name)
-
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
-                        futures = {
-                            executor.submit(synthesize_task, task): task
-                            for task in synth_targets
-                        }
-                        for future in concurrent.futures.as_completed(futures):
-                            txt, _ = futures[future]
-                            try:
-                                status, txt_name, wav_name = future.result()
-                                if status == "saved":
-                                    log(f"Saved audio: {wav_name}")
+                            for chapter in synth_targets:
+                                log(f"Synthesizing {chapter['txt'].name}...")
+                                with open(chapter["txt"], "r", encoding="utf-8") as f:
+                                    text_content = f.read().strip()
+                                if text_content:
+                                    wav = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                                    if wav is not None:
+                                        backend.save_audio(wav, chapter["wav"])
+                                        chapter["has_audio"] = (
+                                            chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
+                                        )
+                                        if chapter["has_audio"]:
+                                            log(f"Saved audio: {chapter['wav'].name}")
                                 else:
-                                    log(f"Skipped {txt_name} (Empty text)")
-                            except Exception as e:
-                                log(f"Error synthesizing {txt.name}: {e}")
-                            completed_count += 1
-                            update_synth_progress(txt.stem)
+                                    log(f"Skipped {chapter['txt'].name} (Empty text)")
+                                update_stream_progress("Synth", chapter["stem"])
+                                align_one_chapter(chapter)
+                    else:
+                        thread_local = threading.local()
 
-            # Update status to 'audio_ready' but NOT complete yet
-            metadata["status"] = "synthesized"
-            with open(book_dir / "metadata.json", "w") as f:
-                json.dump(metadata, f, indent=4)
+                        def get_thread_backend():
+                            if not hasattr(thread_local, "backend"):
+                                backend = SupertonicBackend()
+                                backend.ensure_model()
+                                thread_local.backend = backend
+                            return thread_local.backend
 
-            # --- STEP 3: TIMESTAMPS (WhisperX) ---
-            progress_callback(0.7, "Step 3/3: Aligning text...")
-            log("--- Step 3: Timestamp Alignment (WhisperX) ---")
-            whisperx_python = BookManager._get_whisperx_python()
-            whisperx_model_name = BookManager._get_whisperx_model_name()
-            whisperx_batch_size = BookManager._get_whisperx_batch_size()
-            whisperx_compute_type = BookManager._get_whisperx_compute_type()
-            whisperx_device = os.getenv("CADENCE_WHISPERX_DEVICE", "auto").strip() or "auto"
-            log(f"WhisperX python: {whisperx_python}")
-            log(
-                f"WhisperX config: model={whisperx_model_name}, "
-                f"compute_type={whisperx_compute_type}, batch_size={whisperx_batch_size}, "
-                f"device={whisperx_device}"
-            )
-            whisperx_script = Path(__file__).resolve().parent / "whisperx_align_cli.py"
-            if not whisperx_script.exists():
-                raise FileNotFoundError(f"WhisperX alignment script not found: {whisperx_script}")
-            
-            wav_files = sorted(audio_dir.glob("*.wav"))
-            total_wavs = len(wav_files)
-            log(f"Aligning {len(wav_files)} audio files...")
-            
-            for i, wav in enumerate(wav_files):
-                pct = 0.7 + (0.3 * (i / max(total_wavs, 1)))
-                progress_callback(
-                    pct,
-                    f"Step 3/3: Aligning ({i + 1}/{total_wavs}) {wav.stem}",
-                )
-                
-                out_json = content_dir / f"{wav.stem}.json"
-                if out_json.exists() and out_json.stat().st_size > 0:
-                     log(f"Skipping {wav.name} (Timestamps exist)")
-                     continue
+                        def synthesize_task(chapter):
+                            with open(chapter["txt"], "r", encoding="utf-8") as f:
+                                text_content = f.read().strip()
+                            if not text_content:
+                                return ("empty", chapter)
+                            backend = get_thread_backend()
+                            wav_data = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                            if wav_data is None:
+                                return ("empty", chapter)
+                            backend.save_audio(wav_data, chapter["wav"])
+                            return ("saved", chapter)
 
-                source_txt = content_dir / f"{wav.stem}.txt"
-                if not source_txt.exists():
-                    raise FileNotFoundError(f"Missing source text for {wav.name}: {source_txt}")
-
-                log(f"Aligning {wav.name} with {source_txt.name}...")
-                chapter_report = content_dir / f"{wav.stem}.whisperx_report.json"
-                cmd = [
-                    whisperx_python,
-                    str(whisperx_script),
-                    str(wav),
-                    str(source_txt),
-                    "--whisper-model",
-                    whisperx_model_name,
-                    "--whisper-batch-size",
-                    str(whisperx_batch_size),
-                    "--whisper-compute-type",
-                    whisperx_compute_type,
-                    "--device",
-                    whisperx_device,
-                    "--output-json",
-                    str(out_json),
-                    "--report-json",
-                    str(chapter_report),
-                ]
-                result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-                if result.returncode != 0:
-                    log(f"WhisperX failed for {wav.name}")
-                    log(result.stdout[-2000:] if result.stdout else "")
-                    log(result.stderr[-2000:] if result.stderr else "")
-                    continue
-
-                if chapter_report.exists():
-                    try:
-                        rep = json.loads(chapter_report.read_text(encoding="utf-8"))
-                        totals = rep.get("timing_seconds", {})
-                        used_device = rep.get("device", whisperx_device)
-                        log(
-                            f"Aligned {wav.name}: "
-                            f"device={used_device} "
-                            f"whisper={totals.get('whisperx_transcribe_and_align', 0):.2f}s "
-                            f"total={totals.get('total', 0):.2f}s"
-                        )
-                    except Exception:
-                        pass
-                log(f"Saved timestamps: {out_json.name}")
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+                            futures = {
+                                executor.submit(synthesize_task, chapter): chapter
+                                for chapter in synth_targets
+                            }
+                            for future in concurrent.futures.as_completed(futures):
+                                chapter = futures[future]
+                                try:
+                                    status, chapter = future.result()
+                                    if status == "saved":
+                                        chapter["has_audio"] = (
+                                            chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
+                                        )
+                                        if chapter["has_audio"]:
+                                            log(f"Saved audio: {chapter['wav'].name}")
+                                    else:
+                                        log(f"Skipped {chapter['txt'].name} (Empty text)")
+                                except Exception as e:
+                                    log(f"Error synthesizing {chapter['txt'].name}: {e}")
+                                update_stream_progress("Synth", chapter["stem"])
+                                align_one_chapter(chapter)
+                finally:
+                    whisper_worker.stop()
 
             # --- FINALIZE METADATA ---
             log("Finalizing metadata...")
-            metadata["status"] = "complete"
-            metadata["total_chapters"] = len(wav_files)
-            with open(book_dir / "metadata.json", "w") as f:
+            final_txt = sorted(content_dir.glob("*.txt"))
+            total_chapters = len(final_txt)
+            audio_ready = sum(
+                1
+                for txt in final_txt
+                if (audio_dir / f"{txt.stem}.wav").exists()
+                and (audio_dir / f"{txt.stem}.wav").stat().st_size > 0
+            )
+            aligned_ready = sum(
+                1
+                for txt in final_txt
+                if (content_dir / f"{txt.stem}.json").exists()
+                and (content_dir / f"{txt.stem}.json").stat().st_size > 0
+            )
+
+            if total_chapters > 0 and aligned_ready == total_chapters:
+                metadata["status"] = "complete"
+            elif total_chapters > 0 and audio_ready == total_chapters:
+                metadata["status"] = "synthesized"
+            elif total_chapters > 0:
+                metadata["status"] = "text_only"
+            else:
+                metadata["status"] = "empty"
+
+            metadata["total_chapters"] = total_chapters
+            metadata["chapters"] = total_chapters
+            metadata["last_chapter"] = aligned_ready
+
+            with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
                 json.dump(metadata, f, indent=4)
                 
             progress_callback(1.0, "Ready!")

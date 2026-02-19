@@ -6,12 +6,21 @@ Cadence is an immersive reading pipeline: **EPUB -> chapter text -> audiobook au
 - Synthesizes chapter audio with Supertonic TTS.
 - Aligns audio to text with WhisperX for word timestamps.
 - Plays back in a synced reader/player UI.
+- Processes chapters in a streaming pipeline so reading can start before full import completes.
 
 ## Pipeline
 1. EPUB extraction (Calibre) -> `library/<book>/content/ch_XXX.txt`
-2. TTS synthesis (Supertonic) -> `library/<book>/audio/ch_XXX.wav`
-3. Alignment (WhisperX) -> `library/<book>/content/ch_XXX.json`
-4. Player reads audio + timestamps for RSVP/immersive reading.
+2. Per chapter: TTS synthesis (Supertonic) -> `library/<book>/audio/ch_XXX.wav`
+3. Per chapter: Alignment (WhisperX) -> `library/<book>/content/ch_XXX.json`
+4. Player can read chapters as soon as each chapter has audio + alignment.
+
+## Import Behavior (Important)
+- Cadence now runs **chapter-by-chapter interleaved processing**:
+  - If a chapter already has `.wav`, Cadence skips synthesis and aligns it.
+  - If `.wav` is missing, Cadence synthesizes first, then aligns.
+  - If `.wav` and `.json` both exist, Cadence skips that chapter.
+- This makes resume robust after interruptions and enables immediate reading while import is still running.
+- Library cards update live with ready counts (`Audio x/y`, `Alignment x/y`) during import.
 
 ## Media
 ![Library While Importing](docs/media/library-importing.png)
@@ -56,6 +65,7 @@ Cadence uses `cadence_settings.json` (managed from the UI settings cog next to *
 - `CADENCE_*` environment variables are still usable for one-off CLI/script runs.
 
 Useful keys:
+- `CADENCE_EXTRACT_WORKERS`
 - `CADENCE_SYNTH_WORKERS`
 - `CADENCE_TTS_MAX_CHARS`
 - `CADENCE_FORCE_CPU`

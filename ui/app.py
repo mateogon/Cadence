@@ -1,9 +1,11 @@
 import argparse
 import sys
+import tkinter as tk
 
 import customtkinter as ctk
 
 from system.runtime_settings import apply_settings_to_environ, load_settings
+from ui.theme import PALETTE, SPACING
 from ui.views.library_view import LibraryView
 from ui.views.player_view import PlayerView
 
@@ -25,15 +27,18 @@ def configure_dpi_awareness():
 class App(ctk.CTk):
     def __init__(self, debug=False):
         super().__init__()
+        self.mousewheel_multiplier = 4
         self.debug = debug
         self.title("Cadence")
         self.geometry("1100x700")
+        self.configure(fg_color=PALETTE["surface"])
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=0)
+        self.grid_rowconfigure(2, weight=0)
 
-        self.views_container = ctk.CTkFrame(self, fg_color="transparent")
+        self.views_container = ctk.CTkFrame(self, fg_color=PALETTE["surface"])
         self.views_container.grid(row=0, column=0, sticky="nsew")
         self.views_container.grid_columnconfigure(0, weight=1)
         self.views_container.grid_rowconfigure(0, weight=1)
@@ -49,12 +54,23 @@ class App(ctk.CTk):
         )
         self.player_view.grid(row=0, column=0, sticky="nsew")
 
-        self.import_footer = ctk.CTkFrame(self)
-        self.import_footer.grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 8))
+        self.footer_divider = ctk.CTkFrame(self, height=1, fg_color=PALETTE["card_border"])
+        self.footer_divider.grid(row=1, column=0, sticky="ew", padx=0, pady=0)
+
+        self.import_footer = ctk.CTkFrame(self, fg_color=PALETTE["panel"], corner_radius=0)
+        self.import_footer.grid(
+            row=2,
+            column=0,
+            sticky="ew",
+            padx=0,
+            pady=0,
+        )
         self.import_footer.grid_columnconfigure(0, weight=1)
 
         self.import_progress = ctk.CTkProgressBar(self.import_footer, mode="determinate")
-        self.import_progress.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 0))
+        self.import_progress.grid(
+            row=0, column=0, sticky="ew", padx=SPACING["inner"], pady=(SPACING["inner"], 0)
+        )
         self.import_progress.set(0)
 
         self.import_status_label = ctk.CTkLabel(
@@ -62,11 +78,18 @@ class App(ctk.CTk):
             text="Ready",
             height=18,
             font=ctk.CTkFont(size=11),
-            text_color="gray",
+            text_color=PALETTE["muted_text"],
         )
-        self.import_status_label.grid(row=1, column=0, sticky="w", padx=10, pady=(2, 8))
+        self.import_status_label.grid(
+            row=1,
+            column=0,
+            sticky="w",
+            padx=SPACING["inner"] + 2,
+            pady=(2, SPACING["inner"]),
+        )
 
         self.protocol("WM_DELETE_WINDOW", self.on_app_close)
+        self.bind_mousewheel_speed()
         self.show_library()
 
     def debug_log(self, message):
@@ -88,6 +111,86 @@ class App(ctk.CTk):
         self.debug_log("App close requested")
         self.player_view.safe_close()
         self.destroy()
+
+    def bind_mousewheel_speed(self):
+        # Make wheel scrolling feel less sluggish across scrollable widgets.
+        self.bind_all("<MouseWheel>", self.on_mousewheel, add="+")
+        self.bind_all("<Button-4>", self.on_mousewheel_linux, add="+")
+        self.bind_all("<Button-5>", self.on_mousewheel_linux, add="+")
+
+    def on_mousewheel(self, event):
+        delta = int(getattr(event, "delta", 0))
+        if delta == 0:
+            return
+        # Let CTkScrollableFrame handle its own wheel events to avoid
+        # double-processing (which makes cards feel "scrollable"/jittery).
+        if self.find_ctk_scroll_canvas(event.widget) is not None:
+            return
+        if self.is_interactive_control(event.widget):
+            return
+        base_steps = int(abs(delta) / 120) or 1
+        steps = base_steps * int(self.mousewheel_multiplier)
+        direction = -1 if delta > 0 else 1
+        if self.scroll_event_widget(event.widget, direction * steps):
+            return "break"
+        return
+
+    def on_mousewheel_linux(self, event):
+        num = int(getattr(event, "num", 0))
+        if num not in (4, 5):
+            return
+        if self.find_ctk_scroll_canvas(event.widget) is not None:
+            return
+        if self.is_interactive_control(event.widget):
+            return
+        direction = -1 if num == 4 else 1
+        if self.scroll_event_widget(event.widget, direction * int(self.mousewheel_multiplier)):
+            return "break"
+        return
+
+    def scroll_event_widget(self, widget, steps):
+        # Only target true text/list scrollables here. Many CTk widgets are
+        # canvas-based internally; scrolling those causes the "scrollable cards"
+        # artifact.
+        current = widget
+        while current is not None:
+            yview_scroll = getattr(current, "yview_scroll", None)
+            if callable(yview_scroll) and isinstance(current, (tk.Text, tk.Listbox)):
+                try:
+                    yview_scroll(int(steps), "units")
+                    return True
+                except Exception:
+                    pass
+            current = getattr(current, "master", None)
+        return False
+
+    def is_interactive_control(self, widget):
+        blocked = (
+            ctk.CTkButton,
+            ctk.CTkSlider,
+            ctk.CTkSwitch,
+            ctk.CTkOptionMenu,
+            ctk.CTkEntry,
+            ctk.CTkComboBox,
+        )
+        current = widget
+        while current is not None:
+            try:
+                if isinstance(current, blocked):
+                    return True
+            except Exception:
+                pass
+            current = getattr(current, "master", None)
+        return False
+
+    def find_ctk_scroll_canvas(self, widget):
+        current = widget
+        while current is not None:
+            parent_canvas = getattr(current, "_parent_canvas", None)
+            if parent_canvas is not None and callable(getattr(parent_canvas, "yview_scroll", None)):
+                return parent_canvas
+            current = getattr(current, "master", None)
+        return None
 
     def set_import_status(self, progress, message):
         progress = max(0.0, min(1.0, float(progress)))

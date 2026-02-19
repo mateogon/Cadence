@@ -16,34 +16,63 @@ import librosa
 
 SETTINGS_FILE = "player_settings.json"
 DEFAULT_SETTINGS = {
-    "settings_version": 5,
+    "settings_version": 6,
     "chain_size": 5,
     "font_size": 150,
-    "dark_mode": True,
+    "font_family": "Arial",
     "gap_threshold": 0.3,
     "sync_offset": 0,
     "playback_speed": 1.0,
+    "bg_color": "#121212",
+    "text_color": "#E0E0E0",
+    "focus_color": "#FFD700",
+    "secondary_text_color": "#555555",
     "font_scale_center": 1.25,
     "font_scale_side": 1.00,
     "slot_step": 1.20,
     "slot_padding": 0.06,
     "fit_mode": "shrink",
+    "reading_view_mode": "rsvp",
+    "context_force_center": True,
 }
 
-SETTINGS_SCHEMA = [
+BASE_SETTINGS_SCHEMA = [
+    {
+        "key": "reading_view_mode",
+        "label": "Reading View",
+        "type": "choice",
+        "values": ["rsvp", "context"],
+        "group": "Display",
+    },
     {
         "key": "font_size",
         "label": "Font Size",
         "type": "float",
-        "min": 60.0,
+        "min": 30.0,
         "max": 260.0,
         "step": 2.0,
         "group": "Display",
     },
     {
-        "key": "dark_mode",
-        "label": "Dark Mode",
+        "key": "context_force_center",
+        "label": "Center Current Line (Context)",
         "type": "bool",
+        "group": "Display",
+        "help": "Only for Context view. Keep the currently spoken line centered.",
+    },
+    {
+        "key": "font_family",
+        "label": "Font Family",
+        "type": "choice",
+        "group": "Display",
+    },
+    {"key": "bg_color", "label": "Background Color", "type": "color", "group": "Display"},
+    {"key": "text_color", "label": "Text Color", "type": "color", "group": "Display"},
+    {"key": "focus_color", "label": "Focus Word Color", "type": "color", "group": "Display"},
+    {
+        "key": "secondary_text_color",
+        "label": "Secondary Text Color",
+        "type": "color",
         "group": "Display",
     },
     {
@@ -57,12 +86,13 @@ SETTINGS_SCHEMA = [
     },
     {
         "key": "gap_threshold",
-        "label": "Gap Threshold (s)",
+        "label": "Pause Gap Threshold (s)",
         "type": "float",
         "min": 0.0,
         "max": 1.5,
         "step": 0.05,
         "group": "Timing",
+        "help": "Minimum silent gap between words to render as a visible pause. Lower = more pauses.",
     },
     {
         "key": "playback_speed",
@@ -109,12 +139,22 @@ class PlayerCore:
         self._font_cache = {}
         self.main_font = font.Font(family="Arial", size=-180, weight="bold")
         self.side_font = font.Font(family="Arial", size=-120, weight="normal")
-        self.bg_col = "#121212" if self.settings["dark_mode"] else "#F5F5F5"
-        self.fg_col = "#E0E0E0" if self.settings["dark_mode"] else "#121212"
-        self.center_col = "#FFD700"
-        self.dim_col = "#555555"
+        self.bg_col = self.settings.get("bg_color", DEFAULT_SETTINGS["bg_color"])
+        self.fg_col = self.settings.get("text_color", DEFAULT_SETTINGS["text_color"])
+        self.center_col = self.settings.get("focus_color", DEFAULT_SETTINGS["focus_color"])
+        self.dim_col = self.settings.get(
+            "secondary_text_color", DEFAULT_SETTINGS["secondary_text_color"]
+        )
 
         self.canvas = None
+        self.context_text = None
+        self.context_entries = []
+        self.context_timed_entries = []
+        self.context_time_starts = []
+        self.last_context_index = -1
+        self._last_context_render_sig = None
+        self._last_context_scroll_at = 0.0
+        self.context_padding_lines = 12
         self.lbl_info = None
         self.last_render_index = -1
         self.duration = 0.0
@@ -127,6 +167,9 @@ class PlayerCore:
         self._speed_processing = False
         self._speed_status_text = ""
         self._seek_clip_cache = {}
+        self._ui_resizing = False
+        self._needs_render_after_resize = False
+        self._context_hidden_for_resize = False
 
     def debug_log(self, message):
         if self.debug:
@@ -142,12 +185,30 @@ class PlayerCore:
         self.canvas = tk.Canvas(self.parent, bg=self.bg_col, highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
+        self.context_text = tk.Text(
+            self.parent,
+            bg=self.bg_col,
+            fg=self.fg_col,
+            insertbackground=self.fg_col,
+            wrap="word",
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=0,
+            padx=28,
+            pady=24,
+            font=(self.settings.get("font_family", DEFAULT_SETTINGS["font_family"]), 20),
+        )
+        self.context_text.configure(state="disabled")
+        self.context_text.tag_configure("current_word", foreground=self.center_col, underline=True)
+        self.context_text.pack_forget()
+        self.apply_view_mode_visibility()
+
         info = "Space: Play | Left/Right: Seek | Up/Down: Chapter | Esc: Back"
         self.lbl_info = tk.Label(
             self.parent, text=info, bg=self.bg_col, fg=self.dim_col, font=("Consolas", 10)
         )
         self.lbl_info.pack(side=tk.BOTTOM, fill=tk.X, pady=8)
-        self._mounted_widgets = [self.canvas, self.lbl_info]
+        self._mounted_widgets = [self.canvas, self.context_text, self.lbl_info]
 
         self.ensure_mixer()
         self.bind_keys()
@@ -223,7 +284,6 @@ class PlayerCore:
         wav_file = self.get_source_audio_path(chapter_num)
         json_file = self.content_dir / f"ch_{chapter_num:03d}.json"
         if not wav_file.exists() or not json_file.exists():
-            messagebox.showinfo("End of Book", "No more chapters.")
             return False
         try:
             speed = float(self.settings.get("playback_speed", 1.0))
@@ -234,9 +294,13 @@ class PlayerCore:
                 self.chapter_raw_words = json.load(file)
             self.words = self.inject_gaps(self.chapter_raw_words)
             self.start_times = [word.get("start", 0.0) for word in self.words]
+            self.build_context_text_data()
             self.start_offset = 0.0
             self.is_playing = False
             self.last_render_index = -1
+            self.last_context_index = -1
+            self._last_context_render_sig = None
+            self.apply_view_mode_visibility()
             self.duration = self.get_chapter_duration(chapter_num, wav_file)
             self.update_state(force=True)
             return True
@@ -326,6 +390,10 @@ class PlayerCore:
         return output
 
     def render(self, center_idx):
+        if self.get_view_mode() == "context":
+            current = self.get_current_time() + self.settings["sync_offset"]
+            self.render_context(current)
+            return
         if not self.canvas or not self.words:
             return
         if center_idx == self.last_render_index:
@@ -338,7 +406,11 @@ class PlayerCore:
         center_max_width = int(width * 0.92)
 
         center_size_px = int(self.settings["font_size"] * self.settings["font_scale_center"])
-        self.main_font.configure(size=-center_size_px, weight="bold")
+        self.main_font.configure(
+            family=self.settings.get("font_family", DEFAULT_SETTINGS["font_family"]),
+            size=-center_size_px,
+            weight="bold",
+        )
 
         word = self.words[center_idx].get("word", "")
         text = self.ellipsize(word, self.main_font, center_max_width)
@@ -349,6 +421,133 @@ class PlayerCore:
             font=self.main_font,
             fill=self.center_col,
         )
+
+    def render_context(self, current_time):
+        if not self.context_text or not self.context_timed_entries:
+            return
+        now = time.monotonic()
+        render_sig = (
+            int(self.context_text.winfo_width()),
+            int(self.context_text.winfo_height()),
+            bool(self.settings.get("context_force_center", True)),
+        )
+        idx = self.find_context_index_at_time(current_time)
+        if idx < 0:
+            return
+        entry = self.context_timed_entries[idx]
+        start_char = int(entry["char_start"])
+        end_char = int(entry["char_end"])
+        if end_char <= start_char:
+            return
+
+        # If only viewport/layout changed, avoid expensive retagging and just recenter.
+        if idx == self.last_context_index:
+            if render_sig == self._last_context_render_sig:
+                return
+            self._last_context_render_sig = render_sig
+            if now - self._last_context_scroll_at >= 0.08:
+                self.scroll_context_to_word(start_char)
+                self._last_context_scroll_at = now
+            return
+
+        self.last_context_index = idx
+        self._last_context_render_sig = render_sig
+        start_idx = f"1.0+{start_char}c"
+        end_idx = f"1.0+{end_char}c"
+        self.context_text.tag_remove("current_word", "1.0", tk.END)
+        self.context_text.tag_add("current_word", start_idx, end_idx)
+        self.scroll_context_to_word(start_char)
+        self._last_context_scroll_at = now
+
+    def scroll_context_to_word(self, char_index):
+        if not self.context_text:
+            return
+        target = f"1.0+{int(char_index)}c"
+        force_center = bool(self.settings.get("context_force_center", True))
+        if not force_center:
+            self.context_text.see(target)
+            return
+
+        self.context_text.see(target)
+        self.context_text.update_idletasks()
+
+        try:
+            line_info = self.context_text.dlineinfo(target)
+            if line_info is None:
+                return
+            y_px = float(line_info[1])
+            h_px = max(1.0, float(line_info[3]))
+            widget_h = max(1.0, float(self.context_text.winfo_height()))
+            desired_y = (widget_h - h_px) / 2.0
+            delta_px = y_px - desired_y
+            # Deadband prevents small oscillation/flicker near center.
+            deadband = max(2.0, h_px * 0.35)
+            if abs(delta_px) <= deadband:
+                return
+            units = int(round(delta_px / h_px))
+            if units == 0:
+                units = 1 if delta_px > 0 else -1
+            self.context_text.yview_scroll(units, "units")
+        except Exception:
+            self.context_text.see(target)
+
+    def find_context_index_at_time(self, t):
+        if not self.context_timed_entries:
+            return -1
+        idx = bisect.bisect_right(self.context_time_starts, t) - 1
+        if idx < 0:
+            return 0
+        if idx >= len(self.context_timed_entries):
+            return len(self.context_timed_entries) - 1
+        end_t = float(self.context_timed_entries[idx].get("end_t", 0.0))
+        if t <= end_t:
+            return idx
+        if idx + 1 < len(self.context_timed_entries):
+            return idx + 1
+        return idx
+
+    def build_context_text_data(self):
+        self.context_entries = []
+        self.context_timed_entries = []
+        self.context_time_starts = []
+        if not self.context_text:
+            return
+
+        parts = []
+        top_pad = "\n" * int(self.context_padding_lines)
+        bottom_pad = "\n" * int(self.context_padding_lines)
+        parts.append(top_pad)
+        cursor = len(top_pad)
+        for raw in self.chapter_raw_words:
+            token = str(raw.get("word", ""))
+            if not token:
+                continue
+            char_start = cursor
+            parts.append(token)
+            cursor += len(token)
+            char_end = cursor
+            entry = {
+                "char_start": char_start,
+                "char_end": char_end,
+                "start_t": float(raw.get("start", 0.0)),
+                "end_t": float(raw.get("end", 0.0)),
+                "token": token,
+            }
+            self.context_entries.append(entry)
+            if token.strip():
+                self.context_timed_entries.append(entry)
+                self.context_time_starts.append(entry["start_t"])
+
+        parts.append(bottom_pad)
+        text = "".join(parts)
+        self.context_text.configure(state="normal")
+        self.context_text.delete("1.0", tk.END)
+        self.context_text.insert("1.0", text)
+        self.context_text.tag_remove("current_word", "1.0", tk.END)
+        self.context_text.configure(state="disabled")
+        self.last_context_index = -1
+        self._last_context_render_sig = None
+        self._last_context_scroll_at = 0.0
 
     def ellipsize(self, text, tk_font, max_width):
         if tk_font.measure(text) <= max_width:
@@ -363,6 +562,11 @@ class PlayerCore:
     def update_loop(self):
         if not self.running:
             return
+        if self._ui_resizing:
+            self._needs_render_after_resize = True
+            self.update_state()
+            self._after_id = self.root.after(40, self.update_loop)
+            return
         if self.is_playing and self.words:
             current = self.get_current_time() + self.settings["sync_offset"]
             idx = self.find_index_at_time(current)
@@ -371,7 +575,37 @@ class PlayerCore:
             if pygame.mixer.music.get_pos() == -1 and self.duration > 0:
                 self.is_playing = False
         self.update_state()
-        self._after_id = self.root.after(16, self.update_loop)
+        self._after_id = self.root.after(24, self.update_loop)
+
+    def set_ui_resizing(self, resizing):
+        new_state = bool(resizing)
+        if self._ui_resizing == new_state:
+            return
+        self._ui_resizing = new_state
+        if self._ui_resizing:
+            # Context view (tk.Text) can be expensive to re-wrap while resizing.
+            # Temporarily hide it and restore when resizing settles.
+            if (
+                self.get_view_mode() == "context"
+                and self.context_text
+                and self.context_text.winfo_manager()
+            ):
+                try:
+                    self.context_text.pack_forget()
+                    self._context_hidden_for_resize = True
+                except Exception:
+                    self._context_hidden_for_resize = False
+        if not self._ui_resizing and self._needs_render_after_resize:
+            if self._context_hidden_for_resize:
+                self._context_hidden_for_resize = False
+                self.apply_view_mode_visibility()
+            self._needs_render_after_resize = False
+            try:
+                idx = self.find_index_at_time(self.get_current_time() + self.settings["sync_offset"])
+                if idx != -1:
+                    self.render(idx)
+            except Exception:
+                pass
 
     def get_current_time(self):
         speed = max(0.5, float(self.settings.get("playback_speed", 1.0)))
@@ -390,10 +624,9 @@ class PlayerCore:
             self.is_playing = False
             self.update_state(force=True)
             return
-        if pygame.mixer.music.get_pos() == -1:
-            self.play_from_source_time(self.start_offset)
-        else:
-            pygame.mixer.music.unpause()
+        # Resume by seeking from source time instead of unpause; this avoids
+        # double-counting elapsed time against start_offset after pauses.
+        self.play_from_source_time(self.start_offset)
         self.is_playing = True
         self.update_state(force=True)
 
@@ -439,13 +672,27 @@ class PlayerCore:
         self.canvas.delete("all")
         width = max(1, self.canvas.winfo_width())
         height = max(1, self.canvas.winfo_height())
-        self.canvas.create_text(width // 2, height // 2, text=message, fill=self.fg_col, font=("Arial", 30))
+        family = self.settings.get("font_family", DEFAULT_SETTINGS["font_family"])
+        self.canvas.create_text(
+            width // 2,
+            height // 2,
+            text=message,
+            fill=self.fg_col,
+            font=(family, 30),
+        )
 
     def get_settings(self):
         return dict(self.settings)
 
     def get_settings_schema(self):
-        return list(SETTINGS_SCHEMA)
+        schema = []
+        font_choices = self.get_font_family_choices()
+        for spec in BASE_SETTINGS_SCHEMA:
+            item = dict(spec)
+            if item.get("key") == "font_family":
+                item["values"] = font_choices
+            schema.append(item)
+        return schema
 
     def save_settings(self):
         self.atomic_json_write(Path(SETTINGS_FILE), self.settings, indent=2)
@@ -458,25 +705,53 @@ class PlayerCore:
         previous = dict(self.settings)
         for key, value in patch.items():
             if key == "font_size":
-                self.settings[key] = float(self.clamp(value, 60.0, 260.0))
+                self.settings[key] = float(self.clamp(value, 30.0, 260.0))
+            elif key == "font_family":
+                self.settings[key] = str(value).strip() or DEFAULT_SETTINGS["font_family"]
             elif key == "sync_offset":
                 self.settings[key] = float(self.clamp(value, -3.0, 3.0))
             elif key == "gap_threshold":
                 self.settings[key] = float(self.clamp(value, 0.0, 1.5))
-            elif key == "dark_mode":
-                self.settings[key] = bool(value)
             elif key == "playback_speed":
                 self.settings[key] = float(self.clamp(value, 0.50, 2.00))
+            elif key == "reading_view_mode":
+                normalized = str(value).strip().lower()
+                self.settings[key] = "context" if normalized == "context" else "rsvp"
+            elif key == "context_force_center":
+                self.settings[key] = bool(value)
+            elif key in {"bg_color", "text_color", "focus_color", "secondary_text_color"}:
+                self.settings[key] = str(value)
 
         speed_changed = previous.get("playback_speed") != self.settings.get("playback_speed")
         gap_changed = previous.get("gap_threshold") != self.settings.get("gap_threshold")
-        dark_changed = previous.get("dark_mode") != self.settings.get("dark_mode")
+        context_layout_changed = any(
+            previous.get(k) != self.settings.get(k)
+            for k in ("context_force_center", "font_size", "font_family", "reading_view_mode")
+        )
+        display_changed = any(
+            previous.get(k) != self.settings.get(k)
+            for k in (
+                "font_family",
+                "bg_color",
+                "text_color",
+                "focus_color",
+                "secondary_text_color",
+                "reading_view_mode",
+                "context_force_center",
+            )
+        )
 
         self.apply_theme()
+        self.apply_view_mode_visibility()
         if gap_changed:
             self.words = self.inject_gaps(self.chapter_raw_words)
             self.start_times = [word.get("start", 0.0) for word in self.words]
             self.last_render_index = -1
+            self.last_context_index = -1
+            self._last_context_render_sig = None
+        if context_layout_changed:
+            self.last_context_index = -1
+            self._last_context_render_sig = None
         if speed_changed and self.current_chapter > 0:
             self.stop_audio()
             self.start_offset = pre_change_time
@@ -489,7 +764,7 @@ class PlayerCore:
         idx = self.find_index_at_time(self.get_current_time() + self.settings["sync_offset"])
         if idx != -1:
             self.render(idx)
-        elif dark_changed:
+        elif display_changed:
             self.draw_message(f"Chapter {self.current_chapter}")
         self.update_state(force=True)
 
@@ -501,14 +776,47 @@ class PlayerCore:
         return max(minimum, min(maximum, numeric))
 
     def apply_theme(self):
-        self.bg_col = "#121212" if self.settings["dark_mode"] else "#F5F5F5"
-        self.fg_col = "#E0E0E0" if self.settings["dark_mode"] else "#121212"
-        self.center_col = "#FFD700"
-        self.dim_col = "#555555" if self.settings["dark_mode"] else "#666666"
+        self.bg_col = self.settings.get("bg_color", DEFAULT_SETTINGS["bg_color"])
+        self.fg_col = self.settings.get("text_color", DEFAULT_SETTINGS["text_color"])
+        self.center_col = self.settings.get("focus_color", DEFAULT_SETTINGS["focus_color"])
+        self.dim_col = self.settings.get(
+            "secondary_text_color", DEFAULT_SETTINGS["secondary_text_color"]
+        )
         if self.canvas:
             self.canvas.configure(bg=self.bg_col)
         if self.lbl_info:
             self.lbl_info.configure(bg=self.bg_col, fg=self.dim_col)
+        if self.context_text:
+            family = self.settings.get("font_family", DEFAULT_SETTINGS["font_family"])
+            context_size = max(12, int(float(self.settings.get("font_size", 150)) * 0.20))
+            self.context_text.configure(
+                bg=self.bg_col,
+                fg=self.fg_col,
+                insertbackground=self.fg_col,
+                font=(family, context_size),
+            )
+            self.context_text.tag_configure(
+                "current_word", foreground=self.center_col, underline=True
+            )
+
+    def get_view_mode(self):
+        mode = str(self.settings.get("reading_view_mode", "rsvp")).strip().lower()
+        return "context" if mode == "context" else "rsvp"
+
+    def apply_view_mode_visibility(self):
+        mode = self.get_view_mode()
+        if not self.canvas or not self.context_text:
+            return
+        if mode == "context":
+            if self.canvas.winfo_manager():
+                self.canvas.pack_forget()
+            if not self.context_text.winfo_manager():
+                self.context_text.pack(fill=tk.BOTH, expand=True)
+        else:
+            if self.context_text.winfo_manager():
+                self.context_text.pack_forget()
+            if not self.canvas.winfo_manager():
+                self.canvas.pack(fill=tk.BOTH, expand=True)
 
     def to_playback_seconds(self, source_seconds, speed=None):
         if speed is None:
@@ -866,12 +1174,58 @@ class PlayerCore:
             try:
                 with open(SETTINGS_FILE, "r", encoding="utf-8") as file:
                     loaded = json.load(file)
-                if loaded.get("settings_version") != DEFAULT_SETTINGS["settings_version"]:
-                    return dict(DEFAULT_SETTINGS)
-                return {**DEFAULT_SETTINGS, **loaded}
+                settings = {**DEFAULT_SETTINGS, **loaded}
+                if "dark_mode" in loaded and not any(
+                    k in loaded for k in ("bg_color", "text_color", "focus_color")
+                ):
+                    if bool(loaded.get("dark_mode", True)):
+                        settings.update(
+                            {
+                                "bg_color": "#121212",
+                                "text_color": "#E0E0E0",
+                                "focus_color": "#FFD700",
+                                "secondary_text_color": "#555555",
+                            }
+                        )
+                    else:
+                        settings.update(
+                            {
+                                "bg_color": "#F5F5F5",
+                                "text_color": "#121212",
+                                "focus_color": "#C28A00",
+                                "secondary_text_color": "#666666",
+                            }
+                        )
+                return settings
             except Exception:
                 pass
         return dict(DEFAULT_SETTINGS)
+
+    def reset_settings_defaults(self):
+        self.settings = dict(DEFAULT_SETTINGS)
+        self.apply_theme()
+        self.apply_view_mode_visibility()
+
+    def get_font_family_choices(self):
+        preferred = [
+            "Arial",
+            "Consolas",
+            "Georgia",
+            "Times New Roman",
+            "Calibri",
+            "Verdana",
+            "Trebuchet MS",
+            "Tahoma",
+            "Segoe UI",
+            "Courier New",
+        ]
+        try:
+            available = set(font.families())
+        except Exception:
+            return preferred
+        ordered = [f for f in preferred if f in available]
+        extras = sorted([f for f in available if f not in ordered])[:25]
+        return ordered + extras if ordered else preferred
 
     def get_font(self, family, size, weight="normal"):
         key = (family, size, weight)

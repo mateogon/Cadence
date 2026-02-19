@@ -1,5 +1,7 @@
+import os
 import numpy as np
 import re
+from pathlib import Path
 
 from core.tts_backend import TTSBackend
 from generate_audiobook_supertonic import (
@@ -121,4 +123,18 @@ class SupertonicBackend(TTSBackend):
 
     def save_audio(self, wav, output_path):
         tts = self.ensure_model()
-        tts.save_audio(wav, str(output_path))
+        out_path = Path(output_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        # Keep .wav extension so soundfile can infer output format.
+        tmp_path = out_path.with_name(f"{out_path.stem}.part{out_path.suffix}")
+        try:
+            tts.save_audio(wav, str(tmp_path))
+            if not tmp_path.exists() or tmp_path.stat().st_size <= 0:
+                raise RuntimeError(f"Temporary audio write failed: {tmp_path}")
+            os.replace(str(tmp_path), str(out_path))
+        finally:
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except Exception:
+                pass
