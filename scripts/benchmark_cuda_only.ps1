@@ -1,5 +1,0 @@
-$env:CADENCE_FORCE_CPU="0"
-$env:CADENCE_USE_TENSORRT="0"
-$env:CADENCE_CUDA_ONLY="1"
-$env:CADENCE_SUPPRESS_ORT_WARNINGS="0"
-python scripts/benchmark_supertonic_single_file_chunks.py "C:\Users\mateo\Desktop\AudioBookForge\library\Dennett,_Daniel_Clement_-_Intuition_Pumps_and_Other_Tools_for_Thinking\content\ch_004.txt" --voice M3 --max-chars 500 --workers "1,2,3,4" --repeats 2 --output-csv "benchmark_ch004_cuda_only.csv"

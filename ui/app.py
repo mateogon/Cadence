@@ -1,43 +1,11 @@
 import argparse
-import os
 import sys
-from pathlib import Path
 
 import customtkinter as ctk
 
+from system.runtime_settings import apply_settings_to_environ, load_settings
 from ui.views.library_view import LibraryView
 from ui.views.player_view import PlayerView
-
-
-def load_environment():
-    """Load .env into process environment."""
-    env_path = Path.cwd() / ".env"
-    if not env_path.exists():
-        return
-
-    try:
-        from dotenv import load_dotenv
-
-        load_dotenv(dotenv_path=env_path, override=False)
-        return
-    except Exception:
-        pass
-
-    # Fallback parser if python-dotenv is unavailable.
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip()
-        if not key or key in os.environ:
-            continue
-        if (value.startswith('"') and value.endswith('"')) or (
-            value.startswith("'") and value.endswith("'")
-        ):
-            value = value[1:-1]
-        os.environ[key] = value
 
 
 def configure_dpi_awareness():
@@ -115,7 +83,7 @@ def build_parser():
 
 
 def main(argv=None):
-    load_environment()
+    apply_settings_to_environ(load_settings())
     configure_dpi_awareness()
     ctk.set_appearance_mode("Dark")
     ctk.set_default_color_theme("blue")

@@ -6,4 +6,3 @@ supertonic
 onnxruntime-gpu
 watchfiles
 librosa
-python-dotenv

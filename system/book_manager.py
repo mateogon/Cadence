@@ -488,7 +488,7 @@ class BookManager:
                 f"compute_type={whisperx_compute_type}, batch_size={whisperx_batch_size}, "
                 f"device={whisperx_device}"
             )
-            whisperx_script = Path(__file__).resolve().parent.parent / "scripts" / "benchmark_whisperx_align_only.py"
+            whisperx_script = Path(__file__).resolve().parent / "whisperx_align_cli.py"
             if not whisperx_script.exists():
                 raise FileNotFoundError(f"WhisperX alignment script not found: {whisperx_script}")
             

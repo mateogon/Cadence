@@ -1,8 +1,6 @@
 # Cadence
 Cadence is an immersive reading pipeline: **EPUB -> chapter text -> audiobook audio -> word-level synced reader data**.
 
-It is built for people who want to read and listen at the same time, with a local-first workflow and clear chapter-level artifacts.
-
 ## What It Does
 - Imports EPUB files and extracts ordered chapter text.
 - Synthesizes chapter audio with Supertonic TTS.
@@ -21,7 +19,7 @@ It is built for people who want to read and listen at the same time, with a loca
 ![Import To Playback GIF Placeholder](docs/media/import-to-playback.gif)
 
 ## Requirements
-- Windows 10/11 (current scripts and paths are Windows-oriented)
+- Windows 10/11
 - Python 3.12
 - Calibre (`ebook-convert.exe`) installed at:
   - `C:\Program Files\Calibre2\ebook-convert.exe`
@@ -36,15 +34,9 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 2) Optional: Dedicated WhisperX GPU Environment
-If you hit dependency conflicts between Supertonic and WhisperX, use a split env:
+If you use a separate WhisperX venv, point Cadence to it:
 ```powershell
-.\scripts\setup_whisperx_gpu_env.ps1
-```
-
-Then point Cadence to that Python:
-```powershell
-$env:CADENCE_WHISPERX_PYTHON="C:\Users\mateo\Desktop\AudioBookForge\venv_whisperx\Scripts\python.exe"
+$env:CADENCE_WHISPERX_PYTHON="C:\Users\mateo\Desktop\Cadence\venv_whisperx\Scripts\python.exe"
 ```
 
 ## Run
@@ -59,7 +51,11 @@ python main.py --debug
 ```
 
 ## Configuration
-Cadence loads `.env` automatically at startup.
+Cadence uses `cadence_settings.json` (managed from the UI settings cog next to **Import EPUB**).
+
+- Settings are persisted automatically when you click **Apply**.
+- Settings are applied immediately to the current app process.
+- `CADENCE_*` environment variables are still usable for one-off CLI/script runs.
 
 Useful keys:
 - `CADENCE_SYNTH_WORKERS`
@@ -71,15 +67,3 @@ Useful keys:
 - `CADENCE_WHISPERX_COMPUTE_TYPE`
 - `CADENCE_WHISPERX_DEVICE`
 - `CADENCE_WHISPERX_PYTHON`
-
-## Benchmarks
-Repository includes benchmark helpers:
-- `scripts/benchmark_supertonic_single_file_chunks.py`
-- `scripts/benchmark_text_length_sweep.ps1`
-- `scripts/benchmark_e2e_single_chapter.py`
-
-## Project Status
-Actively iterating. Current focus areas:
-- pronunciation cleanup and punctuation normalization
-- TTS throughput tuning
-- WhisperX stability/configuration

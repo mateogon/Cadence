@@ -1,15 +1,38 @@
 import threading
+import tkinter as tk
 from tkinter import filedialog
 
 import customtkinter as ctk
 
 from system.book_manager import BookManager
+from system.runtime_settings import DEFAULTS, apply_settings_to_environ, load_settings, save_settings
 
 
 class LibraryView(ctk.CTkFrame):
+    CARD_COLOR = "#232323"
+    CARD_HOVER_COLOR = "#2d2d2d"
+    RUNTIME_ENV_FIELDS = [
+        ("CADENCE_SYNTH_WORKERS", "TTS Workers"),
+        ("CADENCE_TTS_MAX_CHARS", "TTS Max Chars"),
+        ("CADENCE_FORCE_CPU", "Force CPU (0/1)"),
+        ("CADENCE_USE_TENSORRT", "Use TensorRT (0/1)"),
+        ("CADENCE_CUDA_ONLY", "CUDA Only (0/1)"),
+        ("CADENCE_SUPPRESS_ORT_WARNINGS", "Suppress ORT Warnings (0/1)"),
+        ("CADENCE_ADD_SYSTEM_CUDA_DLL_PATH", "Add System CUDA DLL Path (0/1)"),
+        ("CADENCE_ORT_LOG_LEVEL", "ORT Log Level (0-4)"),
+        ("CADENCE_WHISPERX_MODEL", "WhisperX Model"),
+        ("CADENCE_WHISPERX_BATCH_SIZE", "WhisperX Batch Size"),
+        ("CADENCE_WHISPERX_COMPUTE_TYPE", "WhisperX Compute Type"),
+        ("CADENCE_WHISPERX_DEVICE", "WhisperX Device"),
+        ("CADENCE_WHISPERX_PYTHON", "WhisperX Python"),
+    ]
+
     def __init__(self, parent, app):
         super().__init__(parent)
         self.app = app
+        self.search_var = tk.StringVar()
+        self.runtime_vars = {}
+        self.runtime_defaults = {}
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -22,14 +45,26 @@ class LibraryView(ctk.CTkFrame):
         )
         self.logo.grid(row=0, column=0, padx=20, pady=20)
 
+        self.import_row = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.import_row.grid(row=1, column=0, padx=16, pady=10, sticky="ew")
+        self.import_row.grid_columnconfigure(0, weight=1)
+
         self.btn_import = ctk.CTkButton(
-            self.sidebar,
+            self.import_row,
             text="Import EPUB",
             command=self.import_book_dialog,
             fg_color="#2CC985",
             hover_color="#229966",
         )
-        self.btn_import.grid(row=1, column=0, padx=20, pady=10)
+        self.btn_import.grid(row=0, column=0, padx=(0, 8), pady=0, sticky="ew")
+
+        self.btn_runtime_settings = ctk.CTkButton(
+            self.import_row,
+            text="⚙",
+            width=36,
+            command=self.open_runtime_settings,
+        )
+        self.btn_runtime_settings.grid(row=0, column=1, padx=0, pady=0)
 
         self.voice_select = ctk.CTkOptionMenu(self.sidebar, values=["M3", "M1", "F1", "F3"])
         self.voice_select.grid(row=2, column=0, padx=20, pady=10)
@@ -52,7 +87,16 @@ class LibraryView(ctk.CTkFrame):
         self.lbl_title = ctk.CTkLabel(
             self.main_area, text="My Library", font=ctk.CTkFont(size=20)
         )
-        self.lbl_title.pack(anchor="w", pady=(0, 20))
+        self.lbl_title.pack(anchor="w", pady=(0, 10))
+
+        self.search_entry = ctk.CTkEntry(
+            self.main_area,
+            textvariable=self.search_var,
+            placeholder_text="Search by title...",
+            width=320,
+        )
+        self.search_entry.pack(anchor="w", pady=(0, 12))
+        self.search_entry.bind("<KeyRelease>", lambda _e: self.refresh_library())
 
         self.scroll_frame = ctk.CTkScrollableFrame(self.main_area, label_text="")
         self.scroll_frame.pack(fill="both", expand=True)
@@ -75,9 +119,14 @@ class LibraryView(ctk.CTkFrame):
             widget.destroy()
 
         books = BookManager.get_books()
+        query = self.search_var.get().strip().lower()
+        if query:
+            books = [b for b in books if query in b.get("title", "").lower()]
+
         if not books:
             ctk.CTkLabel(
-                self.scroll_frame, text="No books found. Import an EPUB to start."
+                self.scroll_frame,
+                text="No matching books." if query else "No books found. Import an EPUB to start.",
             ).pack(pady=50)
             return
 
@@ -85,26 +134,43 @@ class LibraryView(ctk.CTkFrame):
             self.create_book_card(book)
 
     def create_book_card(self, book):
-        card = ctk.CTkFrame(self.scroll_frame, fg_color="#2b2b2b")
-        card.pack(fill="x", pady=5, padx=5)
+        card = ctk.CTkFrame(
+            self.scroll_frame,
+            fg_color=self.CARD_COLOR,
+            corner_radius=10,
+            border_width=1,
+            border_color="#343434",
+        )
+        card.pack(fill="x", pady=6, padx=5)
 
         ctk.CTkLabel(
             card, text=book["title"], font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=10, pady=(10, 0))
+        ).pack(anchor="w", padx=12, pady=(10, 0))
 
         last = book.get("last_chapter", 0)
         total = book.get("total_chapters", book.get("chapters", "?"))
         info = f"Ch {last} / {total}  •  Voice: {book.get('voice', '?')}"
         ctk.CTkLabel(card, text=info, text_color="gray").pack(
-            anchor="w", padx=10, pady=(0, 10)
+            anchor="w", padx=12, pady=(0, 6)
         )
 
-        ctk.CTkButton(
+        btn = ctk.CTkButton(
             card,
-            text="Read / Listen",
-            width=120,
+            text="Read",
+            width=100,
+            height=30,
             command=lambda b=book: self.app.show_player(b),
-        ).pack(anchor="e", padx=10, pady=10)
+        )
+        btn.pack(anchor="e", padx=12, pady=(0, 8))
+
+        def set_hover(on):
+            card.configure(fg_color=self.CARD_HOVER_COLOR if on else self.CARD_COLOR)
+
+        widgets_for_hover = [card, btn]
+        widgets_for_hover.extend(card.winfo_children())
+        for w in widgets_for_hover:
+            w.bind("<Enter>", lambda _e: set_hover(True))
+            w.bind("<Leave>", lambda _e: set_hover(False))
 
     def import_book_dialog(self):
         path = filedialog.askopenfilename(filetypes=[("EPUB", "*.epub")])
@@ -131,3 +197,76 @@ class LibraryView(ctk.CTkFrame):
             self.refresh_library()
 
         self.after(0, finalize)
+
+    def open_runtime_settings(self):
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Runtime Settings")
+        dlg.geometry("640x500")
+        dlg.transient(self.winfo_toplevel())
+        dlg.grab_set()
+
+        ctk.CTkLabel(
+            dlg,
+            text="Cadence Runtime Settings",
+            font=ctk.CTkFont(size=16, weight="bold"),
+        ).pack(anchor="w", padx=16, pady=(14, 8))
+
+        ctk.CTkLabel(
+            dlg,
+            text="Saved in cadence_settings.json and applied immediately.",
+            text_color="gray",
+        ).pack(anchor="w", padx=16, pady=(0, 10))
+
+        body = ctk.CTkScrollableFrame(dlg, label_text="")
+        body.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+
+        current_settings = load_settings()
+        self.runtime_vars = {}
+        self.runtime_defaults = {}
+        for env_key, label in self.RUNTIME_ENV_FIELDS:
+            row = ctk.CTkFrame(body, fg_color="transparent")
+            row.pack(fill="x", padx=8, pady=6)
+            row.grid_columnconfigure(1, weight=1)
+
+            ctk.CTkLabel(row, text=label, width=210, anchor="w").grid(
+                row=0, column=0, sticky="w", padx=(0, 10)
+            )
+
+            var = tk.StringVar(value=current_settings.get(env_key, DEFAULTS.get(env_key, "")))
+            entry = ctk.CTkEntry(row, textvariable=var)
+            entry.grid(row=0, column=1, sticky="ew")
+            self.runtime_vars[env_key] = var
+            self.runtime_defaults[env_key] = DEFAULTS.get(env_key, "")
+
+            ctk.CTkLabel(row, text=env_key, text_color="gray").grid(
+                row=1, column=0, columnspan=2, sticky="w", pady=(2, 0)
+            )
+
+        footer = ctk.CTkFrame(dlg, fg_color="transparent")
+        footer.pack(fill="x", padx=12, pady=(0, 12))
+        footer.grid_columnconfigure(0, weight=1)
+
+        def apply_runtime_settings():
+            updated_settings = {key: var.get().strip() for key, var in self.runtime_vars.items()}
+            save_settings(updated_settings)
+            apply_settings_to_environ(updated_settings, override=True)
+            self.log("Saved runtime settings to cadence_settings.json.")
+            self.log(
+                "Note: running imports use new values immediately; existing loaded models may need restart."
+            )
+            dlg.destroy()
+
+        def reset_runtime_settings():
+            for key, var in self.runtime_vars.items():
+                var.set(self.runtime_defaults.get(key, ""))
+            self.log("Reset runtime settings form to defaults.")
+
+        ctk.CTkButton(footer, text="Cancel", width=110, command=dlg.destroy).grid(
+            row=0, column=1, padx=6
+        )
+        ctk.CTkButton(footer, text="Reset", width=110, command=reset_runtime_settings).grid(
+            row=0, column=2, padx=6
+        )
+        ctk.CTkButton(footer, text="Apply", width=110, command=apply_runtime_settings).grid(
+            row=0, column=3, padx=6
+        )
