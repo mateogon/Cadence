@@ -2,6 +2,7 @@ import argparse
 import importlib.util
 import os
 import sys
+import ctypes
 
 from system.runtime_settings import apply_settings_to_environ, load_settings
 
@@ -126,14 +127,27 @@ def prepare_qt_runtime():
 def main(argv=None):
     apply_settings_to_environ(load_settings())
     prepare_qt_runtime()
-    from qt.qt_compat import QtWidgets, QT_API
+    from pathlib import Path
+    from qt.qt_compat import QtWidgets, QtGui, QT_API
     from qt.main_window import MainWindow
 
     args = build_parser().parse_args(argv)
 
+    if os.name == "nt":
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Cadence.App")
+        except Exception:
+            pass
+
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("Cadence")
     app.setOrganizationName("Cadence")
+    icon_ico = Path("assets/branding/cadence-logo.ico")
+    icon_svg = Path("assets/branding/cadence-logo.svg")
+    if icon_ico.exists():
+        app.setWindowIcon(QtGui.QIcon(str(icon_ico)))
+    elif icon_svg.exists():
+        app.setWindowIcon(QtGui.QIcon(str(icon_svg)))
     if args.debug:
         print(f"[qt] backend={QT_API}", file=sys.stderr)
 

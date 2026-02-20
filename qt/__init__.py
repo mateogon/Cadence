@@ -1,1 +1,1 @@
-"""Qt migration package (PySide6)."""
+"""Cadence Qt application package."""

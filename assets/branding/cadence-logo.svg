@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2CC985" />
+      <stop offset="100%" stop-color="#1b7d52" />
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="126" height="126" rx="24" fill="#2d3642" stroke="#3f4a5a" stroke-width="2"/>
+
+  <g>
+      
+    <rect x="23" y="52" width="10" height="30" rx="5" fill="url(#waveGrad)"/>
+    <rect x="41" y="32" width="10" height="50" rx="5" fill="url(#waveGrad)"/>
+    <rect x="59" y="12" width="10" height="70" rx="5" fill="url(#waveGrad)"/>
+    <rect x="77" y="32" width="10" height="50" rx="5" fill="url(#waveGrad)"/>
+    <rect x="95" y="52" width="10" height="30" rx="5" fill="url(#waveGrad)"/>
+
+    <path d="M 22 90 
+             Q 43 82 64 92 
+             Q 85 82 106 90 
+             L 106 98 
+             L 64 106 
+             L 22 98 Z" fill="#aeb7c3"/>
+  </g>
+</svg>

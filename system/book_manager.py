@@ -306,7 +306,7 @@ class BookManager:
         return [{"word": t["text"], "start": t.get("start", 0), "end": t.get("end", 0)} for t in txt_tokens]
 
     @staticmethod
-    def import_book(epub_path, voice, progress_callback, log_callback=None):
+    def import_book(epub_path, voice, progress_callback, log_callback=None, cancel_check=None):
         """
         Runs the full pipeline in a background thread.
         1. Extract EPUB -> 2. Generate Audio -> 3. Align Timestamps
@@ -315,15 +315,29 @@ class BookManager:
             if log_callback: log_callback(msg)
             print(msg)
 
+        def is_cancelled():
+            if cancel_check is None:
+                return False
+            try:
+                return bool(cancel_check())
+            except Exception:
+                return False
+
         try:
-            epub_file = Path(epub_path)
-            if not epub_file.exists():
-                raise FileNotFoundError(f"EPUB not found: {epub_file}")
+            source_file = Path(epub_path)
+            if not source_file.exists():
+                raise FileNotFoundError(f"Book file not found: {source_file}")
+            source_ext = source_file.suffix.lower()
+            supported_exts = {".epub", ".mobi", ".azw3"}
+            if source_ext not in supported_exts:
+                raise ValueError(
+                    f"Unsupported format: {source_ext}. Supported: .epub, .mobi, .azw3"
+                )
 
             # If using stored source EPUB (library/<book>/source/*.epub), lock to that book folder.
             book_dir = None
             try:
-                resolved = epub_file.resolve()
+                resolved = source_file.resolve()
                 if (
                     resolved.parent.name.lower() == "source"
                     and resolved.parent.parent.parent.resolve() == LIBRARY_PATH.resolve()
@@ -333,16 +347,58 @@ class BookManager:
                 pass
 
             if book_dir is None:
-                book_name = epub_file.stem.replace(" ", "_")  # Clean name
+                book_name = source_file.stem.replace(" ", "_")  # Clean name
                 book_dir = LIBRARY_PATH / book_name
             else:
                 book_name = book_dir.name
 
             content_dir = book_dir / "content"
             source_dir = book_dir / "source"
+            content_dir.mkdir(parents=True, exist_ok=True)
+            source_dir.mkdir(parents=True, exist_ok=True)
 
-            log(f"Starting import for: {epub_file.name}")
+            log(f"Starting import for: {source_file.name}")
             log(f"Target directory: {book_dir}")
+            if is_cancelled():
+                log("Import canceled before start.")
+                return False
+
+            # Normalize all imports to a source EPUB so the existing extraction/alignment
+            # pipeline and resume flow stay unchanged.
+            if source_ext == ".epub":
+                epub_file = source_file
+                stored_epub_name = source_file.name
+            else:
+                stored_epub_name = f"{source_file.stem}.epub"
+                epub_file = source_dir / stored_epub_name
+                if not (epub_file.exists() and epub_file.stat().st_size > 0):
+                    log(f"Converting {source_file.suffix} -> EPUB for import resume support...")
+                    convert_cmd = [CALIBRE_PATH, str(source_file), str(epub_file)]
+                    convert_result = subprocess.run(
+                        convert_cmd,
+                        shell=False,
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                    )
+                    if convert_result.returncode != 0 or not epub_file.exists():
+                        err = (convert_result.stderr or "").strip()[-1200:]
+                        out = (convert_result.stdout or "").strip()[-800:]
+                        if err:
+                            log(f"Calibre conversion error: {err}")
+                        if out:
+                            log(f"Calibre conversion output: {out}")
+                        return False
+                    log(f"Converted source to EPUB: {epub_file.name}")
+
+            # Keep original source book file for traceability/recovery (if not already inside source/).
+            try:
+                original_copy = source_dir / source_file.name
+                if source_file.resolve() != original_copy.resolve():
+                    shutil.copy2(source_file, original_copy)
+            except Exception:
+                pass
 
             # 1. Setup Folders & Check Resume
             extract_needed = True
@@ -376,12 +432,8 @@ class BookManager:
                     extract_needed = False
             else:
                 content_dir.mkdir(parents=True)
-
-            content_dir.mkdir(parents=True, exist_ok=True)
-
-            # Keep original source EPUB in book folder for one-click resume.
-            source_dir.mkdir(parents=True, exist_ok=True)
-            stored_epub = source_dir / epub_file.name
+            # Keep source EPUB in book folder for one-click resume.
+            stored_epub = source_dir / stored_epub_name
             try:
                 if stored_epub.resolve() != epub_file.resolve():
                     shutil.copy2(epub_file, stored_epub)
@@ -393,6 +445,9 @@ class BookManager:
             if extract_needed:
                 progress_callback(0.1, "Step 1/3: Extracting Text...")
                 log("--- Step 1: Text Extraction ---")
+                if is_cancelled():
+                    log("Import canceled during extraction setup.")
+                    return False
                 
                 temp_dir = Path("temp_extraction")
                 neutral_zone = Path("temp_isolated_html")
@@ -464,6 +519,8 @@ class BookManager:
                 log(f"Starting parallel extraction with {max_workers} workers...")
                 
                 def convert_chunk(args):
+                    if is_cancelled():
+                        return None
                     idx, html_path = args
                     chunk_name = f"chunk_{idx:04d}{html_path.suffix}"
                     isolated_html = neutral_zone / chunk_name
@@ -532,6 +589,9 @@ class BookManager:
                         results = [r for r in executor.map(convert_chunk, tasks) if r is not None]
                 
                 chapter_count = len(results)
+                if is_cancelled():
+                    log("Import canceled during text extraction.")
+                    return False
 
                 # Cleanup Temp
                 shutil.rmtree(temp_dir)
@@ -548,7 +608,7 @@ class BookManager:
                     "total_chapters": chapter_count,
                     "last_chapter": 0,
                     "cover": "",
-                    "source_epub": str(Path("source") / epub_file.name),
+                    "source_epub": str(Path("source") / stored_epub_name),
                 }
                 with open(book_dir / "metadata.json", "w") as f:
                     json.dump(metadata, f, indent=4)
@@ -558,11 +618,14 @@ class BookManager:
                 # Load existing metadata
                 with open(book_dir / "metadata.json", "r") as f:
                     metadata = json.load(f)
-                metadata["source_epub"] = str(Path("source") / epub_file.name)
+                metadata["source_epub"] = str(Path("source") / stored_epub_name)
 
             # --- STEP 2/3: STREAMING SYNTH + ALIGN ---
             progress_callback(0.4, "Step 2/3: Streaming synthesis + alignment...")
             log("--- Step 2/3: Streaming Chapter Pipeline (TTS -> WhisperX) ---")
+            if is_cancelled():
+                log("Import canceled before synthesis/alignment.")
+                return False
 
             from adapters.supertonic_backend import SupertonicBackend
 
@@ -646,14 +709,36 @@ class BookManager:
                                 cwd=str(project_root),
                                 bufsize=1,
                             )
+                            start_deadline = time.monotonic() + self.start_timeout_s
+                            msg = None
                             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
                                 future = ex.submit(self.proc.stdout.readline)
-                                line = future.result(timeout=self.start_timeout_s)
-                            if not line:
-                                raise RuntimeError("no ready message from WhisperX worker")
-                            msg = json.loads(line.strip())
-                            if msg.get("event") != "ready":
-                                raise RuntimeError(f"unexpected worker message: {msg}")
+                                while time.monotonic() < start_deadline:
+                                    if is_cancelled():
+                                        raise RuntimeError("startup canceled")
+                                    try:
+                                        line = future.result(timeout=0.2)
+                                    except concurrent.futures.TimeoutError:
+                                        continue
+                                    if not line:
+                                        raise RuntimeError("no ready message from WhisperX worker")
+                                    raw = line.strip()
+                                    if not raw:
+                                        future = ex.submit(self.proc.stdout.readline)
+                                        continue
+                                    try:
+                                        candidate = json.loads(raw)
+                                    except Exception:
+                                        # Ignore noisy non-JSON stdout lines from dependencies.
+                                        future = ex.submit(self.proc.stdout.readline)
+                                        continue
+                                    if candidate.get("event") == "ready":
+                                        msg = candidate
+                                        break
+                                    # Ignore other messages until ready.
+                                    future = ex.submit(self.proc.stdout.readline)
+                            if msg is None:
+                                raise RuntimeError("no ready event from WhisperX worker")
                             self.ready_info = msg
                             log(
                                 "WhisperX worker ready: "
@@ -672,6 +757,8 @@ class BookManager:
                             return None
                         if self.proc is None and not self.start():
                             return None
+                        if is_cancelled():
+                            return None
                         try:
                             payload = {
                                 "cmd": "align",
@@ -683,12 +770,34 @@ class BookManager:
                             }
                             self.proc.stdin.write(json.dumps(payload) + "\n")
                             self.proc.stdin.flush()
+                            deadline = time.monotonic() + self.job_timeout_s
+                            msg = None
                             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
                                 future = ex.submit(self.proc.stdout.readline)
-                                line = future.result(timeout=self.job_timeout_s)
-                            if not line:
-                                raise RuntimeError("worker produced no response")
-                            msg = json.loads(line.strip())
+                                while time.monotonic() < deadline:
+                                    if is_cancelled():
+                                        return None
+                                    try:
+                                        line = future.result(timeout=0.2)
+                                    except concurrent.futures.TimeoutError:
+                                        continue
+                                    if not line:
+                                        raise RuntimeError("worker produced no response")
+                                    raw = line.strip()
+                                    if not raw:
+                                        future = ex.submit(self.proc.stdout.readline)
+                                        continue
+                                    try:
+                                        candidate = json.loads(raw)
+                                    except Exception:
+                                        future = ex.submit(self.proc.stdout.readline)
+                                        continue
+                                    if candidate.get("event") in {"aligned", "error"}:
+                                        msg = candidate
+                                        break
+                                    future = ex.submit(self.proc.stdout.readline)
+                            if msg is None:
+                                raise RuntimeError("worker timed out waiting for result")
                             event = msg.get("event")
                             if event == "aligned":
                                 return msg
@@ -771,6 +880,8 @@ class BookManager:
                         update_stream_progress("Ready", chapter["stem"])
 
                 def align_one_chapter(chapter):
+                    if is_cancelled():
+                        return False
                     if chapter["has_json"]:
                         return True
                     if not chapter["has_audio"]:
@@ -791,6 +902,8 @@ class BookManager:
                         raw_json=raw_json,
                     )
                     if worker_msg is None:
+                        if is_cancelled():
+                            return False
                         cmd = [
                             whisperx_python,
                             str(whisperx_script),
@@ -811,14 +924,44 @@ class BookManager:
                             "--raw-json",
                             str(raw_json),
                         ]
-                        result = subprocess.run(
+                        proc = subprocess.Popen(
                             cmd,
-                            capture_output=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
                             text=True,
                             encoding="utf-8",
                             errors="replace",
                             cwd=str(project_root),
                         )
+                        try:
+                            while proc.poll() is None:
+                                if is_cancelled():
+                                    try:
+                                        proc.terminate()
+                                    except Exception:
+                                        pass
+                                    try:
+                                        proc.wait(timeout=2)
+                                    except Exception:
+                                        try:
+                                            proc.kill()
+                                        except Exception:
+                                            pass
+                                    log(f"Canceled WhisperX for {wav.name}")
+                                    return False
+                                time.sleep(0.2)
+                            stdout, stderr = proc.communicate(timeout=2)
+                            class _R:
+                                returncode = proc.returncode
+                            result = _R()
+                            result.stdout = stdout
+                            result.stderr = stderr
+                        except Exception:
+                            try:
+                                proc.kill()
+                            except Exception:
+                                pass
+                            raise
                         if result.returncode != 0:
                             log(f"WhisperX failed for {wav.name}")
                             log(result.stdout[-2000:] if result.stdout else "")
@@ -850,6 +993,9 @@ class BookManager:
                     # First, align any chapters that already have audio from previous runs.
                     pending_align = [c for c in chapters if c["has_audio"] and not c["has_json"]]
                     for chapter in pending_align:
+                        if is_cancelled():
+                            log("Import canceled during pending alignment.")
+                            break
                         align_one_chapter(chapter)
 
                     synth_targets = [c for c in chapters if not c["has_audio"]]
@@ -858,6 +1004,9 @@ class BookManager:
                             backend = SupertonicBackend()
                             backend.ensure_model()
                             for chapter in synth_targets:
+                                if is_cancelled():
+                                    log("Import canceled during synthesis.")
+                                    break
                                 log(f"Synthesizing {chapter['txt'].name}...")
                                 with open(chapter["txt"], "r", encoding="utf-8") as f:
                                     text_content = f.read().strip()
@@ -885,6 +1034,8 @@ class BookManager:
                             return thread_local.backend
 
                         def synthesize_task(chapter):
+                            if is_cancelled():
+                                return ("cancel", chapter)
                             with open(chapter["txt"], "r", encoding="utf-8") as f:
                                 text_content = f.read().strip()
                             if not text_content:
@@ -902,6 +1053,11 @@ class BookManager:
                                 for chapter in synth_targets
                             }
                             for future in concurrent.futures.as_completed(futures):
+                                if is_cancelled():
+                                    log("Import canceled during parallel synthesis.")
+                                    for f in futures:
+                                        f.cancel()
+                                    break
                                 chapter = futures[future]
                                 try:
                                     status, chapter = future.result()
@@ -911,6 +1067,8 @@ class BookManager:
                                         )
                                         if chapter["has_audio"]:
                                             log(f"Saved audio: {chapter['wav'].name}")
+                                    elif status == "cancel":
+                                        pass
                                     else:
                                         log(f"Skipped {chapter['txt'].name} (Empty text)")
                                 except Exception as e:
@@ -919,6 +1077,9 @@ class BookManager:
                                 align_one_chapter(chapter)
                 finally:
                     whisper_worker.stop()
+                    if is_cancelled():
+                        log("Import canceled.")
+                        return False
 
             # --- FINALIZE METADATA ---
             log("Finalizing metadata...")

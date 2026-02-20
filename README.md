@@ -1,20 +1,23 @@
-# Cadence
-Cadence is an immersive reading pipeline: **EPUB -> chapter text -> audiobook audio -> word-level synced reader data**.
+![Cadence](assets/branding/cadence-badge.svg)
 
-## What It Does
-- Imports EPUB files and extracts ordered chapter text.
+# Cadence
+Cadence is an immersive reading pipeline: **book file -> chapter text -> audiobook audio -> word-level synced reader data**.
+
+## Overview
+- Imports EPUB/MOBI/AZW3 files (MOBI/AZW3 are converted to EPUB via Calibre) and extracts ordered chapter text.
 - Synthesizes chapter audio with Supertonic TTS.
 - Aligns audio to text with WhisperX for word timestamps.
 - Plays back in a synced reader/player UI.
-- Processes chapters in a streaming pipeline so reading can start before full import completes.
+- Uses a streaming chapter pipeline so reading can start before full import finishes.
 
 ## Pipeline
-1. EPUB extraction (Calibre) -> `library/<book>/content/ch_XXX.txt`
-2. Per chapter: TTS synthesis (Supertonic) -> `library/<book>/audio/ch_XXX.wav`
-3. Per chapter: Alignment (WhisperX) -> `library/<book>/content/ch_XXX.json`
-4. Player can read chapters as soon as each chapter has audio + alignment.
+1. Source normalization: MOBI/AZW3 -> EPUB (Calibre, when needed)
+2. EPUB extraction (Calibre) -> `library/<book>/content/ch_XXX.txt`
+3. Per chapter: TTS synthesis (Supertonic) -> `library/<book>/audio/ch_XXX.wav`
+4. Per chapter: Alignment (WhisperX) -> `library/<book>/content/ch_XXX.json`
+5. Player can read chapters as soon as each chapter has audio + alignment.
 
-## Import Behavior (Important)
+## Import Behavior
 - Cadence now runs **chapter-by-chapter interleaved processing**:
   - If a chapter already has `.wav`, Cadence skips synthesis and aligns it.
   - If `.wav` is missing, Cadence synthesizes first, then aligns.
@@ -22,18 +25,27 @@ Cadence is an immersive reading pipeline: **EPUB -> chapter text -> audiobook au
 - This makes resume robust after interruptions and enables immediate reading while import is still running.
 - Library cards update live with ready counts (`Audio x/y`, `Alignment x/y`) during import.
 
-## Media
+## Read While Importing
+Cadence processes books one chapter at a time, not as one long batch.
+
+- As soon as a chapter finishes synthesis + alignment, it is immediately readable.
+- You can open the reader and start from available chapters while the rest of the book continues importing.
+- If import is interrupted, re-import resumes from existing chapter outputs instead of starting over.
+
+## UI Preview
 ![Library While Importing](docs/media/library-importing.png)
+![RSVP View](docs/media/rsvp.gif)
+![Context View](docs/media/context.gif)
 
 ## Requirements
 - Windows 10/11
 - Python 3.12
 - Calibre (`ebook-convert.exe`) installed at:
   - `C:\Program Files\Calibre2\ebook-convert.exe`
+- FFmpeg (`ffmpeg.exe`) available in `PATH` (required for Qt player speed control)
 - NVIDIA GPU recommended for faster TTS/ASR
 
 ## Install
-### 1) Main App Environment
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -52,13 +64,8 @@ $env:CADENCE_WHISPERX_PYTHON="C:\Users\mateo\Desktop\Cadence\venv_whisperx\Scrip
 python main.py
 ```
 
-Debug mode:
-```powershell
-python main.py --debug
-```
-
 ## Configuration
-Cadence uses `cadence_settings.json` (managed from the UI settings cog next to **Import EPUB**).
+Cadence uses `cadence_settings.json` (managed from the UI settings cog next to **Import Book**).
 
 - Settings are persisted automatically when you click **Apply**.
 - Settings are applied immediately to the current app process.

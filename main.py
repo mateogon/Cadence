@@ -1,4 +1,4 @@
-from ui.app import main
+from qt.app import main
 
 if __name__ == "__main__":
     main()

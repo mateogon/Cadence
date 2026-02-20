@@ -5,6 +5,7 @@ from pathlib import Path
 SETTINGS_PATH = Path("cadence_settings.json")
 
 DEFAULTS = {
+    "CADENCE_STYLE_PROFILE": "cadence",
     "CADENCE_EXTRACT_WORKERS": "4",
     "CADENCE_SYNTH_WORKERS": "1",
     "CADENCE_TTS_MAX_CHARS": "800",

@@ -10,7 +10,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from system.book_manager import BookManager
-from ui.app import App
+from qt.app import prepare_qt_runtime
+from qt.qt_compat import QtCore, QtWidgets
+from qt.main_window import MainWindow
 
 
 def percentile(values, p):
@@ -70,17 +72,13 @@ def main():
     book = books[args.book_index]
     up, down = build_width_sequence(args.min_width, args.max_width, args.steps)
 
-    app = App(debug=False)
-    app.geometry(f"{args.min_width}x{args.height}")
-    app.update_idletasks()
-    app.show_player(book)
-    app.update_idletasks()
-
-    # Ensure we benchmark the expensive mode you are tuning.
-    if app.player_view.core is not None:
-        app.player_view.core.update_settings(
-            {"reading_view_mode": "context", "context_force_center": True}
-        )
+    prepare_qt_runtime()
+    app = QtWidgets.QApplication(sys.argv)
+    window = MainWindow(debug=False)
+    window.resize(args.min_width, args.height)
+    window.open_player_page(book)
+    window.show()
+    app.processEvents()
 
     metrics = {
         "book_title": book.get("title", ""),
@@ -94,10 +92,14 @@ def main():
         "samples_ms": [],
     }
 
-    def on_configure(_event):
-        metrics["configure_events"] += 1
+    class ConfigureCounter(QtCore.QObject):
+        def eventFilter(self, obj, event):
+            if event.type() == QtCore.QEvent.Type.Resize:
+                metrics["configure_events"] += 1
+            return False
 
-    app.player_view.bind("<Configure>", on_configure, add="+")
+    counter = ConfigureCounter()
+    window.installEventFilter(counter)
 
     def run_benchmark():
         t0 = time.perf_counter()
@@ -105,15 +107,13 @@ def main():
         for _ in range(args.cycles):
             for width in up:
                 s = time.perf_counter()
-                app.geometry(f"{width}x{args.height}")
-                app.update_idletasks()
-                app.update()
+                window.resize(width, args.height)
+                app.processEvents()
                 samples.append((time.perf_counter() - s) * 1000.0)
             for width in down:
                 s = time.perf_counter()
-                app.geometry(f"{width}x{args.height}")
-                app.update_idletasks()
-                app.update()
+                window.resize(width, args.height)
+                app.processEvents()
                 samples.append((time.perf_counter() - s) * 1000.0)
         total_s = time.perf_counter() - t0
 
@@ -134,10 +134,11 @@ def main():
             out_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
             print(f"Wrote metrics: {out_path.resolve()}")
         print(json.dumps(metrics["summary"], indent=2))
-        app.destroy()
+        window.close()
+        app.quit()
 
-    app.after(500, run_benchmark)
-    app.mainloop()
+    QtCore.QTimer.singleShot(500, run_benchmark)
+    app.exec()
 
 
 if __name__ == "__main__":
