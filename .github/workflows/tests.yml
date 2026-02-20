@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       QT_QPA_PLATFORM: offscreen
+      QT_API: pyqt6
       CADENCE_QT_API: pyqt6
     steps:
       - name: Checkout
