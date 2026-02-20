@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from core.tts_backend import TTSBackend
-from generate_audiobook_supertonic import (
+from adapters.generate_audiobook_supertonic import (
     get_smart_chunks,
     init_tts_engine,
     sanitize_text,
