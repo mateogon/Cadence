@@ -627,8 +627,6 @@ class BookManager:
                 log("Import canceled before synthesis/alignment.")
                 return False
 
-            from adapters.supertonic_backend import SupertonicBackend
-
             txt_files = sorted(content_dir.glob("*.txt"))
             log(f"Found {len(txt_files)} text chapters for voice '{voice}'.")
 
@@ -1001,6 +999,8 @@ class BookManager:
                     synth_targets = [c for c in chapters if not c["has_audio"]]
                     if worker_count <= 1 or len(synth_targets) <= 1:
                         if synth_targets:
+                            from adapters.supertonic_backend import SupertonicBackend
+
                             backend = SupertonicBackend()
                             backend.ensure_model()
                             for chapter in synth_targets:
@@ -1028,6 +1028,8 @@ class BookManager:
 
                         def get_thread_backend():
                             if not hasattr(thread_local, "backend"):
+                                from adapters.supertonic_backend import SupertonicBackend
+
                                 backend = SupertonicBackend()
                                 backend.ensure_model()
                                 thread_local.backend = backend

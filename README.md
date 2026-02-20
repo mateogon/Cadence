@@ -50,8 +50,22 @@ Cadence processes books one chapter at a time, not as one long batch.
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
 ```
+
+Install one runtime profile (fresh venv recommended):
+
+GPU profile (default):
+```powershell
+pip install -r requirements-gpu.txt
+```
+
+CPU profile:
+```powershell
+pip install -r requirements-cpu.txt
+```
+
+Backward-compatible default (`requirements.txt`) points to GPU profile.
+Do not install both CPU and GPU ONNX Runtime packages in the same environment.
 
 If you use a separate WhisperX venv, point Cadence to it:
 ```powershell

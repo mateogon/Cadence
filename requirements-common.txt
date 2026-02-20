@@ -1,0 +1,10 @@
+PyQt6==6.6.1
+PyQt6-Qt6==6.6.3
+pygame
+soundfile
+numpy==1.26.4
+sympy==1.13.1
+supertonic
+watchfiles
+librosa
+whisperx

@@ -1,10 +1,1 @@
-PyQt6==6.6.1
-PyQt6-Qt6==6.6.3
-pygame
-soundfile
-numpy<2.0
-supertonic
-onnxruntime-gpu
-watchfiles
-librosa
-whisperx
+-r requirements-gpu.txt
