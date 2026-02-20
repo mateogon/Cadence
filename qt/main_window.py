@@ -928,7 +928,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self._handle_window_resize_event(obj, event):
             return True
 
-        if obj in self._title_drag_widgets:
+        title_drag_widgets = getattr(self, "_title_drag_widgets", set())
+        if obj in title_drag_widgets:
             if event.type() == QtCore.QEvent.Type.MouseButtonPress:
                 if event.button() == QtCore.Qt.MouseButton.LeftButton:
                     if self.isMaximized():

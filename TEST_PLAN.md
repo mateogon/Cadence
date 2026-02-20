@@ -1,100 +1,128 @@
 # Cadence Test Plan
 
+## Scope
+This plan covers the current app stack:
+- Desktop UI on `PyQt6`
+- Core pipeline in `system/book_manager.py` (extract -> synth -> align)
+- TTS adapter (`adapters/supertonic_backend.py`)
+- WhisperX worker/CLI scripts
+- Runtime settings persistence and environment mapping
+
 ## Goals
-- Catch regressions early while iterating quickly with LLM-assisted development.
-- Keep feedback fast for daily changes, with deeper checks available when needed.
-- Cover the full pipeline: settings -> extraction -> TTS -> alignment -> reader UI.
+- Catch functional regressions quickly during normal development.
+- Keep default checks fast enough to run before every push.
+- Validate the highest-risk production path: import a book and read while import is still running.
 
-## Test Layers
+## Test Pyramid
 
-### 1) Unit Tests (fast, always run)
-Focus on pure logic and deterministic behavior.
+### 1) Unit Tests (fast, deterministic)
+Target pure logic and edge-case behavior.
 
 - `system/runtime_settings.py`
-  - Defaults when file is missing
-  - Valid file overrides defaults
-  - Malformed JSON handled safely
-  - Save/load roundtrip
-  - `apply_settings_to_environ` with override on/off
+  - default settings when file is missing
+  - malformed JSON fallback behavior
+  - save/load round-trip
+  - environment apply behavior with and without override
 - `system/book_manager.py` helpers
-  - `tokenize_for_alignment` normalization behavior
-  - `align_timestamps` on matching and mismatching token streams
-  - Apostrophes and punctuation edge cases
-- Environment parsing helpers
-  - Worker/max-char parsing and fallback behavior
-  - WhisperX python/device/model option resolution
+  - token normalization for alignment
+  - timestamp alignment for matching/mismatched token streams
+  - punctuation/apostrophe normalization edge cases
+  - worker/model/batch/compute option parsing from env
+- `adapters/generate_audiobook_supertonic.py`
+  - `sanitize_text` for unicode punctuation and unsupported chars
+  - `get_smart_chunks` boundaries for long/short paragraphs
 
-### 2) Service Tests (mocked external dependencies)
-Validate pipeline orchestration without GPU/Calibre/WhisperX execution.
+### 2) Service Tests (mocked dependencies)
+Validate orchestration without requiring Calibre, Supertonic, WhisperX, GPU, or ffmpeg.
 
-- Mock `subprocess.run` for Calibre and WhisperX CLI calls
-- Mock `SupertonicBackend` synth/save methods
-- Validate:
-  - Step order and transitions (extract -> synth -> align)
-  - Progress callback range and message shape
-  - Skip behavior for existing WAV/JSON outputs
-  - Metadata status transitions and persistence
-  - Error handling/logging paths
+- Mock process calls used by extraction/alignment paths.
+- Mock `SupertonicBackend` synth/save behavior.
+- Assert:
+  - chapter-by-chapter interleaving behavior
+  - skip/resume behavior when `.wav` / `.json` already exist
+  - metadata state transitions and persistence
+  - progress callback shape and monotonicity
+  - error paths produce clear log messages and non-corrupt state
 
 ### 3) Integration Tests (filesystem-level)
-Run on temp directories with small fixtures and local I/O.
+Run against temporary directories and small fixtures.
 
-- Build tiny fake book structures with 1-3 chapters
-- Simulate generated outputs where needed
-- Verify final structure and metadata consistency
-- Ensure reader-required artifacts exist and are valid
+- Build 1-3 chapter test books with synthetic artifacts.
+- Verify expected output tree:
+  - `library/<book>/content/ch_XXX.txt`
+  - `library/<book>/audio/ch_XXX.wav`
+  - `library/<book>/content/ch_XXX.json`
+- Validate metadata consistency (ready counts, status fields, resumability).
+- Verify import restart does not duplicate work or break prior artifacts.
 
-### 4) UI Behavior Tests (lightweight)
-Focus on behavior contracts, not visual snapshots.
+### 4) UI Tests (PyQt6 behavior)
+Headless behavior tests with `pytest-qt` and `QT_QPA_PLATFORM=offscreen`.
 
-- Library search filters titles correctly
-- Runtime settings dialog load/apply/reset behavior
-- Settings persist to `cadence_settings.json`
-- Global bottom import footer updates while switching views
+- App startup smoke:
+  - `qt.app.main()` bootstraps under `PyQt6`
+  - main window opens/closes cleanly
+- Library view:
+  - search/filter behavior
+  - selecting a book/chapter updates UI state
+- Settings:
+  - load/apply/reset persists to `cadence_settings.json`
+  - setting changes propagate to runtime env mapping
+- Import footer/progress:
+  - progress text updates and remains visible while switching views
+- Audio backend behavior:
+  - if pygame unavailable, QT backend fallback remains stable
 
-### 5) GPU Smoke Tests (manual/scheduled)
-Minimal real end-to-end checks on GPU machines.
+### 5) Manual GPU/External Smoke (scheduled or pre-release)
+Real dependency checks on a Windows machine with Calibre + ffmpeg + CUDA.
 
-- One small chapter synth + align run
-- Confirm timestamps output and no runtime exceptions
-- Capture effective device/provider and timing summary
-
-### 6) Regression Corpus (text/punctuation)
-Maintain a small fixture corpus for known failure patterns.
-
-- Apostrophe variants (`don't`, `don’t`, `dont`, possessives)
-- Dash variants (`—`, `–`, `-`, comma replacements)
-- Long paragraph chunking edge cases
-- Previously observed mispronunciation/alignment failures
+- Import a small EPUB end-to-end.
+- Confirm:
+  - Supertonic provider selection logs expected device/provider
+  - WhisperX alignment outputs valid chapter JSON
+  - reading works while later chapters still process
+  - speed change path works when ffmpeg is present
 
 ## Tooling
 - `pytest`
-- `pytest-mock` (or `unittest.mock`)
-- `tmp_path`, `monkeypatch`
-- Optional: `ruff` for lint gate
+- `pytest-qt` (for PyQt6 UI behavior)
+- `pytest-mock` or `unittest.mock`
+- `tmp_path`, `monkeypatch`, `capsys`
+- Optional lint gate: `ruff`
 
-## Suggested Test Layout
-- `tests/unit/`
-- `tests/service/`
-- `tests/integration/`
-- `tests/ui/`
-- `tests/gpu_smoke/`
+## Proposed Test Layout
+- `tests/unit/test_runtime_settings.py`
+- `tests/unit/test_book_manager_helpers.py`
+- `tests/unit/test_supertonic_text_processing.py`
+- `tests/service/test_import_orchestration.py`
+- `tests/integration/test_library_artifact_flow.py`
+- `tests/ui/test_app_startup_pyqt6.py`
+- `tests/ui/test_settings_dialog.py`
+- `tests/ui/test_library_search_and_selection.py`
 - `tests/fixtures/`
 
-## CI Strategy
+## Execution Cadence
 
-### Required (fast)
-- Lint
-- Unit + service tests (no GPU)
+### Pre-commit / pre-push (required)
+- Unit tests
+- Service tests
+- Basic UI smoke (`tests/ui/test_app_startup_pyqt6.py`)
+
+### CI on every PR (required)
+- Unit + service + integration (mocked/external-free)
+- PyQt6 headless UI suite
 - Syntax/import check
 
-### Optional (scheduled or manual)
-- GPU smoke tests
-- Longer integration matrix
+### Scheduled or release-candidate (required before release)
+- Manual GPU/external smoke pass on Windows
 
-## Rollout Order
-1. Unit tests for runtime settings + alignment helpers
-2. Service tests for `BookManager.import_book` with mocks
-3. One integration test covering metadata + artifact flow
-4. Regression text corpus assertions
-5. GPU smoke script/tests for periodic validation
+## Environment Notes
+- Set `QT_QPA_PLATFORM=offscreen` for headless UI runs.
+- Keep CI tests independent of local GPU/Calibre/ffmpeg availability.
+- Use mocks for WhisperX/Supertonic process-heavy paths in default CI.
+
+## Initial Rollout Order
+1. Land unit coverage for settings and text/alignment helpers.
+2. Add service tests for import orchestration and resume/skip semantics.
+3. Add one integration test for chapter artifact flow and metadata.
+4. Add PyQt6 startup + settings dialog behavior tests.
+5. Add scheduled manual GPU smoke checklist to release routine.
