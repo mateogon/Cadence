@@ -633,6 +633,480 @@ class BookManager:
                     shutil.rmtree(d, ignore_errors=True)
 
     @staticmethod
+    def _run_streaming_pipeline(
+        book_dir,
+        content_dir,
+        audio_dir,
+        voice,
+        metadata,
+        progress_callback,
+        is_cancelled,
+        log,
+    ):
+        progress_callback(0.4, "Step 2/3: Streaming synthesis + alignment...")
+        log("--- Step 2/3: Streaming Chapter Pipeline (TTS -> WhisperX) ---")
+        if is_cancelled():
+            log("Import canceled before synthesis/alignment.")
+            return False
+
+        txt_files = sorted(content_dir.glob("*.txt"))
+        log(f"Found {len(txt_files)} text chapters for voice '{voice}'.")
+
+        audio_dir.mkdir(exist_ok=True)
+
+        whisperx_python = BookManager._get_whisperx_python()
+        whisperx_model_name = BookManager._get_whisperx_model_name()
+        whisperx_batch_size = BookManager._get_whisperx_batch_size()
+        whisperx_compute_type = BookManager._get_whisperx_compute_type()
+        whisperx_device = os.getenv("CADENCE_WHISPERX_DEVICE", "auto").strip() or "auto"
+        whisperx_script = Path(__file__).resolve().parent / "whisperx_align_cli.py"
+        whisperx_worker_script = Path(__file__).resolve().parent / "whisperx_align_worker.py"
+        if not whisperx_script.exists():
+            raise FileNotFoundError(f"WhisperX alignment script not found: {whisperx_script}")
+        if not whisperx_worker_script.exists():
+            raise FileNotFoundError(
+                f"WhisperX alignment worker script not found: {whisperx_worker_script}"
+            )
+        project_root = Path(__file__).resolve().parent.parent
+
+        if not txt_files:
+            log("No text chapters found for synthesis/alignment.")
+            return True
+
+        worker_count = BookManager._get_synthesis_worker_count()
+        tts_max_chars = BookManager._get_tts_max_chunk_chars()
+        free_mib = BookManager._detect_gpu_free_memory_mib()
+        if free_mib is not None:
+            log(f"GPU free memory: {free_mib} MiB")
+        log(f"Using {worker_count} synthesis worker(s).")
+        log(f"TTS max chunk size: {tts_max_chars} chars.")
+        log(f"WhisperX python: {whisperx_python}")
+        log(
+            f"WhisperX config: model={whisperx_model_name}, "
+            f"compute_type={whisperx_compute_type}, batch_size={whisperx_batch_size}, "
+            f"device={whisperx_device}"
+        )
+
+        class WhisperXImportWorker:
+            def __init__(self):
+                self.proc = None
+                self.ready_info = None
+                self.disabled = False
+                self.start_timeout_s = float(
+                    os.getenv("CADENCE_WHISPERX_START_TIMEOUT_SEC", "240")
+                )
+                self.job_timeout_s = float(
+                    os.getenv("CADENCE_WHISPERX_CHAPTER_TIMEOUT_SEC", "300")
+                )
+
+            def start(self):
+                if self.disabled or self.proc is not None:
+                    return self.proc is not None
+                cmd = [
+                    whisperx_python,
+                    str(whisperx_worker_script),
+                    "--whisper-model",
+                    whisperx_model_name,
+                    "--whisper-batch-size",
+                    str(whisperx_batch_size),
+                    "--whisper-compute-type",
+                    whisperx_compute_type,
+                    "--device",
+                    whisperx_device,
+                ]
+                try:
+                    log(
+                        "Starting WhisperX worker (one-time model load for this import)..."
+                    )
+                    self.proc = subprocess.Popen(
+                        cmd,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        cwd=str(project_root),
+                        bufsize=1,
+                    )
+                    start_deadline = time.monotonic() + self.start_timeout_s
+                    msg = None
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                        future = ex.submit(self.proc.stdout.readline)
+                        while time.monotonic() < start_deadline:
+                            if is_cancelled():
+                                raise RuntimeError("startup canceled")
+                            try:
+                                line = future.result(timeout=0.2)
+                            except concurrent.futures.TimeoutError:
+                                continue
+                            if not line:
+                                raise RuntimeError("no ready message from WhisperX worker")
+                            raw = line.strip()
+                            if not raw:
+                                future = ex.submit(self.proc.stdout.readline)
+                                continue
+                            try:
+                                candidate = json.loads(raw)
+                            except Exception:
+                                future = ex.submit(self.proc.stdout.readline)
+                                continue
+                            if candidate.get("event") == "ready":
+                                msg = candidate
+                                break
+                            future = ex.submit(self.proc.stdout.readline)
+                    if msg is None:
+                        raise RuntimeError("no ready event from WhisperX worker")
+                    self.ready_info = msg
+                    log(
+                        "WhisperX worker ready: "
+                        f"device={msg.get('device', whisperx_device)} "
+                        f"compute={msg.get('resolved_compute_type', whisperx_compute_type)}"
+                    )
+                    return True
+                except Exception as e:
+                    self.disabled = True
+                    log(f"WhisperX worker startup failed, using fallback mode: {e}")
+                    self.stop()
+                    return False
+
+            def align(self, wav, txt, out_json, report_json, raw_json):
+                if self.disabled:
+                    return None
+                if self.proc is None and not self.start():
+                    return None
+                if is_cancelled():
+                    return None
+                try:
+                    payload = {
+                        "cmd": "align",
+                        "wav": str(wav),
+                        "txt": str(txt),
+                        "out_json": str(out_json),
+                        "report_json": str(report_json),
+                        "raw_json": str(raw_json),
+                    }
+                    self.proc.stdin.write(json.dumps(payload) + "\n")
+                    self.proc.stdin.flush()
+                    deadline = time.monotonic() + self.job_timeout_s
+                    msg = None
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                        future = ex.submit(self.proc.stdout.readline)
+                        while time.monotonic() < deadline:
+                            if is_cancelled():
+                                return None
+                            try:
+                                line = future.result(timeout=0.2)
+                            except concurrent.futures.TimeoutError:
+                                continue
+                            if not line:
+                                raise RuntimeError("worker produced no response")
+                            raw = line.strip()
+                            if not raw:
+                                future = ex.submit(self.proc.stdout.readline)
+                                continue
+                            try:
+                                candidate = json.loads(raw)
+                            except Exception:
+                                future = ex.submit(self.proc.stdout.readline)
+                                continue
+                            if candidate.get("event") in {"aligned", "error"}:
+                                msg = candidate
+                                break
+                            future = ex.submit(self.proc.stdout.readline)
+                    if msg is None:
+                        raise RuntimeError("worker timed out waiting for result")
+                    event = msg.get("event")
+                    if event == "aligned":
+                        return msg
+                    if event == "error":
+                        log(f"WhisperX worker error: {msg.get('error', 'unknown error')}")
+                        return None
+                    log(f"WhisperX worker unexpected message: {msg}")
+                    return None
+                except Exception as e:
+                    log(f"WhisperX worker communication failed: {e}")
+                    self.disabled = True
+                    self.stop()
+                    return None
+
+            def stop(self):
+                proc = self.proc
+                self.proc = None
+                if proc is None:
+                    return
+                try:
+                    if proc.stdin:
+                        proc.stdin.write(json.dumps({"cmd": "shutdown"}) + "\n")
+                        proc.stdin.flush()
+                except Exception:
+                    pass
+                try:
+                    proc.wait(timeout=3)
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+
+        chapters = []
+        for txt in txt_files:
+            wav_path = audio_dir / f"{txt.stem}.wav"
+            json_path = content_dir / f"{txt.stem}.json"
+            has_audio = wav_path.exists() and wav_path.stat().st_size > 0
+            has_json = json_path.exists() and json_path.stat().st_size > 0
+            chapters.append(
+                {
+                    "stem": txt.stem,
+                    "txt": txt,
+                    "wav": wav_path,
+                    "json": json_path,
+                    "has_audio": has_audio,
+                    "has_json": has_json,
+                    "ready": has_audio and has_json,
+                }
+            )
+
+        total_chapters = len(chapters)
+        ready_count = sum(1 for c in chapters if c["ready"])
+        whisper_worker = WhisperXImportWorker()
+        metadata["status"] = "processing"
+        metadata["total_chapters"] = total_chapters
+        metadata["last_chapter"] = ready_count
+        with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=4)
+
+        def update_stream_progress(activity="", chapter_stem=""):
+            pct = 0.4 + (0.55 * (ready_count / max(total_chapters, 1)))
+            pct = min(0.95, pct)
+            detail = f"{activity} {chapter_stem}".strip()
+            suffix = f" • {detail}" if detail else ""
+            progress_callback(
+                pct,
+                f"Step 2/3: Processing ({ready_count}/{total_chapters} ready){suffix}",
+            )
+
+        def mark_ready(chapter):
+            nonlocal ready_count
+            if chapter["has_audio"] and chapter["has_json"] and not chapter["ready"]:
+                chapter["ready"] = True
+                ready_count += 1
+                metadata["last_chapter"] = ready_count
+                metadata["status"] = "processing"
+                with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
+                    json.dump(metadata, f, indent=4)
+                update_stream_progress("Ready", chapter["stem"])
+
+        def align_one_chapter(chapter):
+            if is_cancelled():
+                return False
+            if chapter["has_json"]:
+                return True
+            if not chapter["has_audio"]:
+                return False
+
+            source_txt = chapter["txt"]
+            out_json = chapter["json"]
+            wav = chapter["wav"]
+            chapter_report = content_dir / f"{chapter['stem']}.whisperx_report.json"
+            raw_json = content_dir / f"{chapter['stem']}_raw.json"
+
+            log(f"Aligning {wav.name} with {source_txt.name}...")
+            worker_msg = whisper_worker.align(
+                wav=wav,
+                txt=source_txt,
+                out_json=out_json,
+                report_json=chapter_report,
+                raw_json=raw_json,
+            )
+            if worker_msg is None:
+                if is_cancelled():
+                    return False
+                cmd = [
+                    whisperx_python,
+                    str(whisperx_script),
+                    str(wav),
+                    str(source_txt),
+                    "--whisper-model",
+                    whisperx_model_name,
+                    "--whisper-batch-size",
+                    str(whisperx_batch_size),
+                    "--whisper-compute-type",
+                    whisperx_compute_type,
+                    "--device",
+                    whisperx_device,
+                    "--output-json",
+                    str(out_json),
+                    "--report-json",
+                    str(chapter_report),
+                    "--raw-json",
+                    str(raw_json),
+                ]
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    cwd=str(project_root),
+                )
+                try:
+                    while proc.poll() is None:
+                        if is_cancelled():
+                            try:
+                                proc.terminate()
+                            except Exception:
+                                pass
+                            try:
+                                proc.wait(timeout=2)
+                            except Exception:
+                                try:
+                                    proc.kill()
+                                except Exception:
+                                    pass
+                            log(f"Canceled WhisperX for {wav.name}")
+                            return False
+                        time.sleep(0.2)
+                    stdout, stderr = proc.communicate(timeout=2)
+
+                    class _R:
+                        returncode = proc.returncode
+
+                    result = _R()
+                    result.stdout = stdout
+                    result.stderr = stderr
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+                    raise
+                if result.returncode != 0:
+                    log(f"WhisperX failed for {wav.name}")
+                    log(result.stdout[-2000:] if result.stdout else "")
+                    log(result.stderr[-2000:] if result.stderr else "")
+                    return False
+
+            if chapter_report.exists():
+                try:
+                    rep = json.loads(chapter_report.read_text(encoding="utf-8"))
+                    totals = rep.get("timing_seconds", {})
+                    used_device = rep.get("device", whisperx_device)
+                    log(
+                        f"Aligned {wav.name}: "
+                        f"device={used_device} "
+                        f"whisper={totals.get('whisperx_transcribe_and_align', 0):.2f}s "
+                        f"total={totals.get('total', 0):.2f}s"
+                    )
+                except Exception:
+                    pass
+
+            if out_json.exists() and out_json.stat().st_size > 0:
+                chapter["has_json"] = True
+                log(f"Saved timestamps: {out_json.name}")
+                mark_ready(chapter)
+                return True
+            return False
+
+        try:
+            pending_align = [c for c in chapters if c["has_audio"] and not c["has_json"]]
+            for chapter in pending_align:
+                if is_cancelled():
+                    log("Import canceled during pending alignment.")
+                    break
+                align_one_chapter(chapter)
+
+            synth_targets = [c for c in chapters if not c["has_audio"]]
+            if worker_count <= 1 or len(synth_targets) <= 1:
+                if synth_targets:
+                    from adapters.supertonic_backend import SupertonicBackend
+
+                    backend = SupertonicBackend()
+                    backend.ensure_model()
+                    for chapter in synth_targets:
+                        if is_cancelled():
+                            log("Import canceled during synthesis.")
+                            break
+                        log(f"Synthesizing {chapter['txt'].name}...")
+                        with open(chapter["txt"], "r", encoding="utf-8") as f:
+                            text_content = f.read().strip()
+                        if text_content:
+                            wav = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                            if wav is not None:
+                                backend.save_audio(wav, chapter["wav"])
+                                chapter["has_audio"] = (
+                                    chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
+                                )
+                                if chapter["has_audio"]:
+                                    log(f"Saved audio: {chapter['wav'].name}")
+                        else:
+                            log(f"Skipped {chapter['txt'].name} (Empty text)")
+                        update_stream_progress("Synth", chapter["stem"])
+                        align_one_chapter(chapter)
+            else:
+                thread_local = threading.local()
+
+                def get_thread_backend():
+                    if not hasattr(thread_local, "backend"):
+                        from adapters.supertonic_backend import SupertonicBackend
+
+                        backend = SupertonicBackend()
+                        backend.ensure_model()
+                        thread_local.backend = backend
+                    return thread_local.backend
+
+                def synthesize_task(chapter):
+                    if is_cancelled():
+                        return ("cancel", chapter)
+                    with open(chapter["txt"], "r", encoding="utf-8") as f:
+                        text_content = f.read().strip()
+                    if not text_content:
+                        return ("empty", chapter)
+                    backend = get_thread_backend()
+                    wav_data = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                    if wav_data is None:
+                        return ("empty", chapter)
+                    backend.save_audio(wav_data, chapter["wav"])
+                    return ("saved", chapter)
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+                    futures = {
+                        executor.submit(synthesize_task, chapter): chapter
+                        for chapter in synth_targets
+                    }
+                    for future in concurrent.futures.as_completed(futures):
+                        if is_cancelled():
+                            log("Import canceled during parallel synthesis.")
+                            for f in futures:
+                                f.cancel()
+                            break
+                        chapter = futures[future]
+                        try:
+                            status, chapter = future.result()
+                            if status == "saved":
+                                chapter["has_audio"] = (
+                                    chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
+                                )
+                                if chapter["has_audio"]:
+                                    log(f"Saved audio: {chapter['wav'].name}")
+                            elif status == "cancel":
+                                pass
+                            else:
+                                log(f"Skipped {chapter['txt'].name} (Empty text)")
+                        except Exception as e:
+                            log(f"Error synthesizing {chapter['txt'].name}: {e}")
+                        update_stream_progress("Synth", chapter["stem"])
+                        align_one_chapter(chapter)
+        finally:
+            whisper_worker.stop()
+            if is_cancelled():
+                log("Import canceled.")
+                return False
+
+        return True
+
+    @staticmethod
     def import_book(epub_path, voice, progress_callback, log_callback=None, cancel_check=None):
         """
         Runs the full pipeline in a background thread.
@@ -743,467 +1217,18 @@ class BookManager:
                 metadata["source_epub"] = str(Path("source") / stored_epub_name)
 
             # --- STEP 2/3: STREAMING SYNTH + ALIGN ---
-            progress_callback(0.4, "Step 2/3: Streaming synthesis + alignment...")
-            log("--- Step 2/3: Streaming Chapter Pipeline (TTS -> WhisperX) ---")
-            if is_cancelled():
-                log("Import canceled before synthesis/alignment.")
-                return False
-
-            txt_files = sorted(content_dir.glob("*.txt"))
-            log(f"Found {len(txt_files)} text chapters for voice '{voice}'.")
-
             audio_dir = book_dir / "audio"
-            audio_dir.mkdir(exist_ok=True)
-
-            whisperx_python = BookManager._get_whisperx_python()
-            whisperx_model_name = BookManager._get_whisperx_model_name()
-            whisperx_batch_size = BookManager._get_whisperx_batch_size()
-            whisperx_compute_type = BookManager._get_whisperx_compute_type()
-            whisperx_device = os.getenv("CADENCE_WHISPERX_DEVICE", "auto").strip() or "auto"
-            whisperx_script = Path(__file__).resolve().parent / "whisperx_align_cli.py"
-            whisperx_worker_script = Path(__file__).resolve().parent / "whisperx_align_worker.py"
-            if not whisperx_script.exists():
-                raise FileNotFoundError(f"WhisperX alignment script not found: {whisperx_script}")
-            if not whisperx_worker_script.exists():
-                raise FileNotFoundError(
-                    f"WhisperX alignment worker script not found: {whisperx_worker_script}"
-                )
-            project_root = Path(__file__).resolve().parent.parent
-
-            if not txt_files:
-                log("No text chapters found for synthesis/alignment.")
-            else:
-                worker_count = BookManager._get_synthesis_worker_count()
-                tts_max_chars = BookManager._get_tts_max_chunk_chars()
-                free_mib = BookManager._detect_gpu_free_memory_mib()
-                if free_mib is not None:
-                    log(f"GPU free memory: {free_mib} MiB")
-                log(f"Using {worker_count} synthesis worker(s).")
-                log(f"TTS max chunk size: {tts_max_chars} chars.")
-                log(f"WhisperX python: {whisperx_python}")
-                log(
-                    f"WhisperX config: model={whisperx_model_name}, "
-                    f"compute_type={whisperx_compute_type}, batch_size={whisperx_batch_size}, "
-                    f"device={whisperx_device}"
-                )
-
-                class WhisperXImportWorker:
-                    def __init__(self):
-                        self.proc = None
-                        self.ready_info = None
-                        self.disabled = False
-                        self.start_timeout_s = float(
-                            os.getenv("CADENCE_WHISPERX_START_TIMEOUT_SEC", "240")
-                        )
-                        self.job_timeout_s = float(
-                            os.getenv("CADENCE_WHISPERX_CHAPTER_TIMEOUT_SEC", "300")
-                        )
-
-                    def start(self):
-                        if self.disabled or self.proc is not None:
-                            return self.proc is not None
-                        cmd = [
-                            whisperx_python,
-                            str(whisperx_worker_script),
-                            "--whisper-model",
-                            whisperx_model_name,
-                            "--whisper-batch-size",
-                            str(whisperx_batch_size),
-                            "--whisper-compute-type",
-                            whisperx_compute_type,
-                            "--device",
-                            whisperx_device,
-                        ]
-                        try:
-                            log(
-                                "Starting WhisperX worker (one-time model load for this import)..."
-                            )
-                            self.proc = subprocess.Popen(
-                                cmd,
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.DEVNULL,
-                                text=True,
-                                encoding="utf-8",
-                                errors="replace",
-                                cwd=str(project_root),
-                                bufsize=1,
-                            )
-                            start_deadline = time.monotonic() + self.start_timeout_s
-                            msg = None
-                            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                                future = ex.submit(self.proc.stdout.readline)
-                                while time.monotonic() < start_deadline:
-                                    if is_cancelled():
-                                        raise RuntimeError("startup canceled")
-                                    try:
-                                        line = future.result(timeout=0.2)
-                                    except concurrent.futures.TimeoutError:
-                                        continue
-                                    if not line:
-                                        raise RuntimeError("no ready message from WhisperX worker")
-                                    raw = line.strip()
-                                    if not raw:
-                                        future = ex.submit(self.proc.stdout.readline)
-                                        continue
-                                    try:
-                                        candidate = json.loads(raw)
-                                    except Exception:
-                                        # Ignore noisy non-JSON stdout lines from dependencies.
-                                        future = ex.submit(self.proc.stdout.readline)
-                                        continue
-                                    if candidate.get("event") == "ready":
-                                        msg = candidate
-                                        break
-                                    # Ignore other messages until ready.
-                                    future = ex.submit(self.proc.stdout.readline)
-                            if msg is None:
-                                raise RuntimeError("no ready event from WhisperX worker")
-                            self.ready_info = msg
-                            log(
-                                "WhisperX worker ready: "
-                                f"device={msg.get('device', whisperx_device)} "
-                                f"compute={msg.get('resolved_compute_type', whisperx_compute_type)}"
-                            )
-                            return True
-                        except Exception as e:
-                            self.disabled = True
-                            log(f"WhisperX worker startup failed, using fallback mode: {e}")
-                            self.stop()
-                            return False
-
-                    def align(self, wav, txt, out_json, report_json, raw_json):
-                        if self.disabled:
-                            return None
-                        if self.proc is None and not self.start():
-                            return None
-                        if is_cancelled():
-                            return None
-                        try:
-                            payload = {
-                                "cmd": "align",
-                                "wav": str(wav),
-                                "txt": str(txt),
-                                "out_json": str(out_json),
-                                "report_json": str(report_json),
-                                "raw_json": str(raw_json),
-                            }
-                            self.proc.stdin.write(json.dumps(payload) + "\n")
-                            self.proc.stdin.flush()
-                            deadline = time.monotonic() + self.job_timeout_s
-                            msg = None
-                            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                                future = ex.submit(self.proc.stdout.readline)
-                                while time.monotonic() < deadline:
-                                    if is_cancelled():
-                                        return None
-                                    try:
-                                        line = future.result(timeout=0.2)
-                                    except concurrent.futures.TimeoutError:
-                                        continue
-                                    if not line:
-                                        raise RuntimeError("worker produced no response")
-                                    raw = line.strip()
-                                    if not raw:
-                                        future = ex.submit(self.proc.stdout.readline)
-                                        continue
-                                    try:
-                                        candidate = json.loads(raw)
-                                    except Exception:
-                                        future = ex.submit(self.proc.stdout.readline)
-                                        continue
-                                    if candidate.get("event") in {"aligned", "error"}:
-                                        msg = candidate
-                                        break
-                                    future = ex.submit(self.proc.stdout.readline)
-                            if msg is None:
-                                raise RuntimeError("worker timed out waiting for result")
-                            event = msg.get("event")
-                            if event == "aligned":
-                                return msg
-                            if event == "error":
-                                log(f"WhisperX worker error: {msg.get('error', 'unknown error')}")
-                                return None
-                            log(f"WhisperX worker unexpected message: {msg}")
-                            return None
-                        except Exception as e:
-                            log(f"WhisperX worker communication failed: {e}")
-                            self.disabled = True
-                            self.stop()
-                            return None
-
-                    def stop(self):
-                        proc = self.proc
-                        self.proc = None
-                        if proc is None:
-                            return
-                        try:
-                            if proc.stdin:
-                                proc.stdin.write(json.dumps({"cmd": "shutdown"}) + "\n")
-                                proc.stdin.flush()
-                        except Exception:
-                            pass
-                        try:
-                            proc.wait(timeout=3)
-                        except Exception:
-                            try:
-                                proc.kill()
-                            except Exception:
-                                pass
-
-                chapters = []
-                for txt in txt_files:
-                    wav_path = audio_dir / f"{txt.stem}.wav"
-                    json_path = content_dir / f"{txt.stem}.json"
-                    has_audio = wav_path.exists() and wav_path.stat().st_size > 0
-                    has_json = json_path.exists() and json_path.stat().st_size > 0
-                    chapters.append(
-                        {
-                            "stem": txt.stem,
-                            "txt": txt,
-                            "wav": wav_path,
-                            "json": json_path,
-                            "has_audio": has_audio,
-                            "has_json": has_json,
-                            "ready": has_audio and has_json,
-                        }
-                    )
-
-                total_chapters = len(chapters)
-                ready_count = sum(1 for c in chapters if c["ready"])
-                whisper_worker = WhisperXImportWorker()
-                metadata["status"] = "processing"
-                metadata["total_chapters"] = total_chapters
-                metadata["last_chapter"] = ready_count
-                with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
-                    json.dump(metadata, f, indent=4)
-
-                def update_stream_progress(activity="", chapter_stem=""):
-                    pct = 0.4 + (0.55 * (ready_count / max(total_chapters, 1)))
-                    pct = min(0.95, pct)
-                    detail = f"{activity} {chapter_stem}".strip()
-                    suffix = f" • {detail}" if detail else ""
-                    progress_callback(
-                        pct,
-                        f"Step 2/3: Processing ({ready_count}/{total_chapters} ready){suffix}",
-                    )
-
-                def mark_ready(chapter):
-                    nonlocal ready_count
-                    if chapter["has_audio"] and chapter["has_json"] and not chapter["ready"]:
-                        chapter["ready"] = True
-                        ready_count += 1
-                        metadata["last_chapter"] = ready_count
-                        metadata["status"] = "processing"
-                        with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
-                            json.dump(metadata, f, indent=4)
-                        update_stream_progress("Ready", chapter["stem"])
-
-                def align_one_chapter(chapter):
-                    if is_cancelled():
-                        return False
-                    if chapter["has_json"]:
-                        return True
-                    if not chapter["has_audio"]:
-                        return False
-
-                    source_txt = chapter["txt"]
-                    out_json = chapter["json"]
-                    wav = chapter["wav"]
-                    chapter_report = content_dir / f"{chapter['stem']}.whisperx_report.json"
-                    raw_json = content_dir / f"{chapter['stem']}_raw.json"
-
-                    log(f"Aligning {wav.name} with {source_txt.name}...")
-                    worker_msg = whisper_worker.align(
-                        wav=wav,
-                        txt=source_txt,
-                        out_json=out_json,
-                        report_json=chapter_report,
-                        raw_json=raw_json,
-                    )
-                    if worker_msg is None:
-                        if is_cancelled():
-                            return False
-                        cmd = [
-                            whisperx_python,
-                            str(whisperx_script),
-                            str(wav),
-                            str(source_txt),
-                            "--whisper-model",
-                            whisperx_model_name,
-                            "--whisper-batch-size",
-                            str(whisperx_batch_size),
-                            "--whisper-compute-type",
-                            whisperx_compute_type,
-                            "--device",
-                            whisperx_device,
-                            "--output-json",
-                            str(out_json),
-                            "--report-json",
-                            str(chapter_report),
-                            "--raw-json",
-                            str(raw_json),
-                        ]
-                        proc = subprocess.Popen(
-                            cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            text=True,
-                            encoding="utf-8",
-                            errors="replace",
-                            cwd=str(project_root),
-                        )
-                        try:
-                            while proc.poll() is None:
-                                if is_cancelled():
-                                    try:
-                                        proc.terminate()
-                                    except Exception:
-                                        pass
-                                    try:
-                                        proc.wait(timeout=2)
-                                    except Exception:
-                                        try:
-                                            proc.kill()
-                                        except Exception:
-                                            pass
-                                    log(f"Canceled WhisperX for {wav.name}")
-                                    return False
-                                time.sleep(0.2)
-                            stdout, stderr = proc.communicate(timeout=2)
-                            class _R:
-                                returncode = proc.returncode
-                            result = _R()
-                            result.stdout = stdout
-                            result.stderr = stderr
-                        except Exception:
-                            try:
-                                proc.kill()
-                            except Exception:
-                                pass
-                            raise
-                        if result.returncode != 0:
-                            log(f"WhisperX failed for {wav.name}")
-                            log(result.stdout[-2000:] if result.stdout else "")
-                            log(result.stderr[-2000:] if result.stderr else "")
-                            return False
-
-                    if chapter_report.exists():
-                        try:
-                            rep = json.loads(chapter_report.read_text(encoding="utf-8"))
-                            totals = rep.get("timing_seconds", {})
-                            used_device = rep.get("device", whisperx_device)
-                            log(
-                                f"Aligned {wav.name}: "
-                                f"device={used_device} "
-                                f"whisper={totals.get('whisperx_transcribe_and_align', 0):.2f}s "
-                                f"total={totals.get('total', 0):.2f}s"
-                            )
-                        except Exception:
-                            pass
-
-                    if out_json.exists() and out_json.stat().st_size > 0:
-                        chapter["has_json"] = True
-                        log(f"Saved timestamps: {out_json.name}")
-                        mark_ready(chapter)
-                        return True
-                    return False
-
-                try:
-                    # First, align any chapters that already have audio from previous runs.
-                    pending_align = [c for c in chapters if c["has_audio"] and not c["has_json"]]
-                    for chapter in pending_align:
-                        if is_cancelled():
-                            log("Import canceled during pending alignment.")
-                            break
-                        align_one_chapter(chapter)
-
-                    synth_targets = [c for c in chapters if not c["has_audio"]]
-                    if worker_count <= 1 or len(synth_targets) <= 1:
-                        if synth_targets:
-                            from adapters.supertonic_backend import SupertonicBackend
-
-                            backend = SupertonicBackend()
-                            backend.ensure_model()
-                            for chapter in synth_targets:
-                                if is_cancelled():
-                                    log("Import canceled during synthesis.")
-                                    break
-                                log(f"Synthesizing {chapter['txt'].name}...")
-                                with open(chapter["txt"], "r", encoding="utf-8") as f:
-                                    text_content = f.read().strip()
-                                if text_content:
-                                    wav = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
-                                    if wav is not None:
-                                        backend.save_audio(wav, chapter["wav"])
-                                        chapter["has_audio"] = (
-                                            chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
-                                        )
-                                        if chapter["has_audio"]:
-                                            log(f"Saved audio: {chapter['wav'].name}")
-                                else:
-                                    log(f"Skipped {chapter['txt'].name} (Empty text)")
-                                update_stream_progress("Synth", chapter["stem"])
-                                align_one_chapter(chapter)
-                    else:
-                        thread_local = threading.local()
-
-                        def get_thread_backend():
-                            if not hasattr(thread_local, "backend"):
-                                from adapters.supertonic_backend import SupertonicBackend
-
-                                backend = SupertonicBackend()
-                                backend.ensure_model()
-                                thread_local.backend = backend
-                            return thread_local.backend
-
-                        def synthesize_task(chapter):
-                            if is_cancelled():
-                                return ("cancel", chapter)
-                            with open(chapter["txt"], "r", encoding="utf-8") as f:
-                                text_content = f.read().strip()
-                            if not text_content:
-                                return ("empty", chapter)
-                            backend = get_thread_backend()
-                            wav_data = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
-                            if wav_data is None:
-                                return ("empty", chapter)
-                            backend.save_audio(wav_data, chapter["wav"])
-                            return ("saved", chapter)
-
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
-                            futures = {
-                                executor.submit(synthesize_task, chapter): chapter
-                                for chapter in synth_targets
-                            }
-                            for future in concurrent.futures.as_completed(futures):
-                                if is_cancelled():
-                                    log("Import canceled during parallel synthesis.")
-                                    for f in futures:
-                                        f.cancel()
-                                    break
-                                chapter = futures[future]
-                                try:
-                                    status, chapter = future.result()
-                                    if status == "saved":
-                                        chapter["has_audio"] = (
-                                            chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
-                                        )
-                                        if chapter["has_audio"]:
-                                            log(f"Saved audio: {chapter['wav'].name}")
-                                    elif status == "cancel":
-                                        pass
-                                    else:
-                                        log(f"Skipped {chapter['txt'].name} (Empty text)")
-                                except Exception as e:
-                                    log(f"Error synthesizing {chapter['txt'].name}: {e}")
-                                update_stream_progress("Synth", chapter["stem"])
-                                align_one_chapter(chapter)
-                finally:
-                    whisper_worker.stop()
-                    if is_cancelled():
-                        log("Import canceled.")
-                        return False
+            if not BookManager._run_streaming_pipeline(
+                book_dir=book_dir,
+                content_dir=content_dir,
+                audio_dir=audio_dir,
+                voice=voice,
+                metadata=metadata,
+                progress_callback=progress_callback,
+                is_cancelled=is_cancelled,
+                log=log,
+            ):
+                return False
 
             # --- FINALIZE METADATA ---
             log("Finalizing metadata...")

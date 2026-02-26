@@ -149,6 +149,50 @@ def test_extract_chapter_texts_returns_none_on_unpack_failure(tmp_path, monkeypa
     assert out is None
 
 
+def test_run_streaming_pipeline_returns_false_when_cancelled_early(tmp_path):
+    book_dir = tmp_path / "Book"
+    content_dir = book_dir / "content"
+    audio_dir = book_dir / "audio"
+    content_dir.mkdir(parents=True)
+    metadata = {"title": "Book", "voice": "M3"}
+    events = []
+
+    ok = BookManager._run_streaming_pipeline(
+        book_dir=book_dir,
+        content_dir=content_dir,
+        audio_dir=audio_dir,
+        voice="M3",
+        metadata=metadata,
+        progress_callback=lambda pct, msg: events.append((pct, msg)),
+        is_cancelled=lambda: True,
+        log=lambda _msg: None,
+    )
+
+    assert ok is False
+    assert events and events[0][1] == "Step 2/3: Streaming synthesis + alignment..."
+
+
+def test_run_streaming_pipeline_returns_true_with_no_txt(tmp_path):
+    book_dir = tmp_path / "Book"
+    content_dir = book_dir / "content"
+    audio_dir = book_dir / "audio"
+    content_dir.mkdir(parents=True)
+    metadata = {"title": "Book", "voice": "M3"}
+
+    ok = BookManager._run_streaming_pipeline(
+        book_dir=book_dir,
+        content_dir=content_dir,
+        audio_dir=audio_dir,
+        voice="M3",
+        metadata=metadata,
+        progress_callback=lambda _pct, _msg: None,
+        is_cancelled=lambda: False,
+        log=lambda _msg: None,
+    )
+
+    assert ok is True
+
+
 def test_tokenize_for_alignment_normalizes_curly_punctuation():
     tokens = BookManager.tokenize_for_alignment("Don’t stop — now")
 

@@ -39,8 +39,7 @@ Status key:
     - source normalization/conversion
     - book target/source artifact persistence
     - text extraction
-    - synthesis
-    - alignment
+    - synthesis + alignment streaming phase
     - metadata finalization
 - `[ ]` Replace broad silent exceptions with structured error handling.
   - Keep app resilient, but always log actionable context.
