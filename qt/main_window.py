@@ -88,7 +88,8 @@ class BookCard(QtWidgets.QFrame):
         audio = int(self.book.get("audio_chapters_ready", 0) or 0)
         align = int(self.book.get("aligned_chapters_ready", 0) or 0)
         total = int(self.book.get("total_chapters", expected) or expected)
-        last = int(self.book.get("last_chapter", 0) or 0)
+        ready_last = int(self.book.get("last_chapter", 0) or 0)
+        resume_last = int(self.book.get("resume_chapter", 0) or 0)
         incomplete = bool(self.book.get("is_incomplete", False))
 
         outer = QtWidgets.QVBoxLayout(self)
@@ -99,7 +100,14 @@ class BookCard(QtWidgets.QFrame):
         title.setObjectName("BookTitle")
         outer.addWidget(title)
 
-        meta = QtWidgets.QLabel(f"Ch {last}/{total}  •  Voice: {self.book.get('voice', '?')}")
+        if resume_last > 0:
+            meta_text = (
+                f"Read Ch {resume_last}/{total}  •  Ready Ch {ready_last}/{total}  •  "
+                f"Voice: {self.book.get('voice', '?')}"
+            )
+        else:
+            meta_text = f"Ready Ch {ready_last}/{total}  •  Voice: {self.book.get('voice', '?')}"
+        meta = QtWidgets.QLabel(meta_text)
         meta.setObjectName("BookMeta")
         outer.addWidget(meta)
 
@@ -1886,6 +1894,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def refresh_library(self):
         books = BookManager.get_books()
+        positions = self._player_settings.get("book_positions", {})
+        if isinstance(positions, dict):
+            for book in books:
+                key = self._book_resume_key(book)
+                if not key:
+                    continue
+                try:
+                    resume_chapter = int(positions.get(key, 0) or 0)
+                except Exception:
+                    resume_chapter = 0
+                if resume_chapter > 0:
+                    book["resume_chapter"] = resume_chapter
         q = self.search.text().strip().lower()
         if q:
             books = [

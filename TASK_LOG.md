@@ -57,8 +57,8 @@ Status key:
 - `[-]` Improve library search and filtering.
   - [x] search by title + author + voice.
   - optional quick filters: incomplete/complete, recently read.
-- `[ ]` Expose real reading progress in library cards.
-  - keep import progress and reading progress as separate fields.
+- `[-]` Expose real reading progress in library cards.
+  - [x] keep import progress and reading progress as separate fields.
   - avoid overloading `last_chapter` semantics.
 
 ## Phase 5: Engineering Quality Gates

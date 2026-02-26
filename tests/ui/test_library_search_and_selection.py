@@ -140,6 +140,27 @@ def test_refresh_library_prioritizes_incomplete_books(qapp, monkeypatch):
     window.close()
 
 
+def test_book_card_meta_shows_read_and_ready_progress(qapp):
+    book = {
+        "title": "Progress Book",
+        "path": "library/progress",
+        "is_incomplete": False,
+        "last_chapter": 5,
+        "resume_chapter": 3,
+        "total_chapters": 6,
+        "content_chapters": 6,
+        "audio_chapters_ready": 6,
+        "aligned_chapters_ready": 5,
+        "voice": "M3",
+    }
+
+    card = mw.BookCard(book)
+    labels = [w.text() for w in card.findChildren(mw.QtWidgets.QLabel)]
+    assert any("Read Ch 3/6" in text for text in labels)
+    assert any("Ready Ch 5/6" in text for text in labels)
+    card.deleteLater()
+
+
 def test_open_player_page_selects_last_chapter(qapp, monkeypatch, tmp_path):
     book_dir = tmp_path / "Sample_Book"
     content = book_dir / "content"
