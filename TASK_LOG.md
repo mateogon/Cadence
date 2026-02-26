@@ -69,11 +69,11 @@ Status key:
 - `[x]` Update CI to run lint + tests together.
 
 ## Phase 6: Documentation and Contributor Ops
-- `[ ]` Add contributor docs.
+- `[x]` Add contributor docs.
   - `CONTRIBUTING.md` with setup, test commands, CI expectations.
-- `[ ]` Add changelog discipline.
+- `[x]` Add changelog discipline.
   - `CHANGELOG.md` with release notes template.
-- `[ ]` Expand docs beyond README.
+- `[x]` Expand docs beyond README.
   - architecture overview (pipeline + data model).
   - troubleshooting page (Calibre/ffmpeg/WhisperX/Qt runtime issues).
 

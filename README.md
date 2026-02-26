@@ -97,3 +97,9 @@ Useful keys:
 - `CADENCE_WHISPERX_DEVICE`
 - `CADENCE_WHISPERX_PYTHON`
 - `CADENCE_CALIBRE_PATH`
+
+## Project Docs
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
