@@ -193,6 +193,91 @@ def test_run_streaming_pipeline_returns_true_with_no_txt(tmp_path):
     assert ok is True
 
 
+def test_run_streaming_pipeline_worker_start_timeout_falls_back(tmp_path, monkeypatch):
+    book_dir = tmp_path / "Book"
+    content_dir = book_dir / "content"
+    audio_dir = book_dir / "audio"
+    content_dir.mkdir(parents=True)
+    audio_dir.mkdir(parents=True)
+
+    txt = content_dir / "ch_001.txt"
+    wav = audio_dir / "ch_001.wav"
+    txt.write_text("hello world", encoding="utf-8")
+    wav.write_bytes(b"RIFF....WAVEfmt ")
+
+    class _WorkerStdout:
+        def readline(self):
+            return ""
+
+    class _DummyStdin:
+        def write(self, _line):
+            return None
+
+        def flush(self):
+            return None
+
+    class _WorkerProc:
+        def __init__(self):
+            self.stdout = _WorkerStdout()
+            self.stdin = _DummyStdin()
+
+        def wait(self, timeout=None):
+            return 0
+
+        def kill(self):
+            return None
+
+    class _CliProc:
+        def __init__(self, cmd):
+            self._cmd = cmd
+            self.returncode = 0
+            self.stdin = _DummyStdin()
+
+        def poll(self):
+            return 0
+
+        def communicate(self, timeout=None):
+            out_path = None
+            if "--output-json" in self._cmd:
+                idx = self._cmd.index("--output-json")
+                out_path = self._cmd[idx + 1]
+            if out_path:
+                from pathlib import Path
+
+                Path(out_path).write_text("[]", encoding="utf-8")
+            return ("", "")
+
+        def wait(self, timeout=None):
+            return 0
+
+        def kill(self):
+            return None
+
+    def _fake_popen(cmd, *args, **kwargs):
+        if len(cmd) >= 2 and str(cmd[1]).endswith("whisperx_align_worker.py"):
+            return _WorkerProc()
+        return _CliProc(cmd)
+
+    monkeypatch.setenv("CADENCE_WHISPERX_START_TIMEOUT_SEC", "0")
+    monkeypatch.setattr("system.book_manager.subprocess.Popen", _fake_popen)
+
+    metadata = {"title": "Book", "voice": "M3"}
+    logs = []
+    ok = BookManager._run_streaming_pipeline(
+        book_dir=book_dir,
+        content_dir=content_dir,
+        audio_dir=audio_dir,
+        voice="M3",
+        metadata=metadata,
+        progress_callback=lambda _pct, _msg: None,
+        is_cancelled=lambda: False,
+        log=logs.append,
+    )
+
+    assert ok is True
+    assert any("startup failed, using fallback mode" in msg for msg in logs)
+
+
 def test_tokenize_for_alignment_normalizes_curly_punctuation():
     tokens = BookManager.tokenize_for_alignment("Don’t stop — now")
 
