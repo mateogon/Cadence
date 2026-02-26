@@ -37,6 +37,7 @@ Status key:
 - `[-]` Split `BookManager.import_book` orchestration into focused components.
   - Extract modules/functions for:
     - source normalization/conversion
+    - book target/source artifact persistence
     - text extraction
     - synthesis
     - alignment

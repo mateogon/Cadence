@@ -483,6 +483,156 @@ class BookManager:
         return metadata
 
     @staticmethod
+    def _extract_chapter_texts(epub_file, content_dir, calibre_exe, is_cancelled, log):
+        temp_dir = Path("temp_extraction")
+        neutral_zone = Path("temp_isolated_html")
+
+        for d in [temp_dir, neutral_zone]:
+            if d.exists():
+                shutil.rmtree(d)
+        neutral_zone.mkdir()
+        temp_dir.mkdir()
+
+        try:
+            log(f"Unpacking EPUB to {temp_dir}...")
+            cmd = [calibre_exe, str(epub_file), str(temp_dir)]
+
+            result = subprocess.run(
+                cmd,
+                shell=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            if result.returncode != 0:
+                log(f"Calibre Error: {result.stderr}")
+                return None
+
+            opf_files = list(temp_dir.rglob("*.opf"))
+            ordered_html_files = []
+
+            if opf_files:
+                try:
+                    opf_path = opf_files[0]
+                    log(f"Parsing OPF for reading order: {opf_path.name}")
+                    with open(opf_path, "r", encoding="utf-8", errors="replace") as f:
+                        opf_content = f.read()
+
+                    import xml.etree.ElementTree as ET
+                    opf_content = re.sub(r' xmlns="[^"]+"', "", opf_content, count=1)
+                    root = ET.fromstring(opf_content)
+
+                    manifest = {}
+                    for item in root.findall(".//manifest/item"):
+                        manifest[item.get("id")] = item.get("href")
+
+                    spine = [itemref.get("idref") for itemref in root.findall(".//spine/itemref")]
+
+                    opf_dir = opf_path.parent
+                    for item_id in spine:
+                        if item_id in manifest:
+                            rel_path = manifest[item_id]
+                            full_path = opf_dir / rel_path
+                            if full_path.exists():
+                                ordered_html_files.append(full_path)
+
+                    log(f"Found {len(ordered_html_files)} chapters in spine.")
+                except Exception as e:
+                    log(f"Failed to parse OPF: {e}. Falling back to name sort.")
+                    ordered_html_files = []
+
+            if not ordered_html_files:
+                ordered_html_files = sorted(list(temp_dir.rglob("*.html")) + list(temp_dir.rglob("*.xhtml")))
+
+            html_files = ordered_html_files
+            log(f"Processing {len(html_files)} files...")
+
+            max_workers = BookManager._get_extract_worker_count()
+            log(f"Starting parallel extraction with {max_workers} workers...")
+
+            def convert_chunk(args):
+                if is_cancelled():
+                    return None
+                idx, html_path = args
+                chunk_name = f"chunk_{idx:04d}{html_path.suffix}"
+                isolated_html = neutral_zone / chunk_name
+                shutil.copy(html_path, isolated_html)
+
+                out_txt_name = f"ch_{idx+1:03d}.txt"
+                out_txt = content_dir / out_txt_name
+                out_txt_tmp = content_dir / f"{out_txt.stem}.part.txt"
+
+                log(f"Converting {html_path.name} -> {out_txt_name}")
+                cmd = [
+                    calibre_exe,
+                    str(isolated_html),
+                    str(out_txt_tmp),
+                    "--txt-output-format=plain",
+                    "--smarten-punctuation",
+                ]
+                for attempt in (1, 2):
+                    try:
+                        result = subprocess.run(
+                            cmd,
+                            shell=False,
+                            capture_output=True,
+                            encoding="utf-8",
+                            errors="replace",
+                        )
+                        if result.returncode == 0 and out_txt_tmp.exists() and out_txt_tmp.stat().st_size > 0:
+                            os.replace(out_txt_tmp, out_txt)
+                            return idx + 1
+
+                        err_tail = (result.stderr or "").strip()[-600:]
+                        out_tail = (result.stdout or "").strip()[-300:]
+                        log(
+                            f"Failed conversion (attempt {attempt}/2): {html_path.name} "
+                            f"(rc={result.returncode})"
+                        )
+                        if err_tail:
+                            log(f"stderr: {err_tail}")
+                        if out_tail:
+                            log(f"stdout: {out_tail}")
+                        if out_txt_tmp.exists():
+                            try:
+                                out_txt_tmp.unlink()
+                            except Exception:
+                                pass
+                        if attempt == 1:
+                            time.sleep(0.15)
+                    except Exception as exc:
+                        log(f"Exception converting {html_path.name} (attempt {attempt}/2): {exc}")
+                        if attempt == 1:
+                            time.sleep(0.15)
+                    finally:
+                        if out_txt_tmp.exists():
+                            try:
+                                out_txt_tmp.unlink()
+                            except Exception:
+                                pass
+                return None
+
+            tasks = [(i, h) for i, h in enumerate(html_files) if h.stat().st_size >= 300]
+            if max_workers <= 1:
+                results = [r for r in map(convert_chunk, tasks) if r is not None]
+            else:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    results = [r for r in executor.map(convert_chunk, tasks) if r is not None]
+
+            chapter_count = len(results)
+            if is_cancelled():
+                log("Import canceled during text extraction.")
+                return None
+
+            log(f"Extraction complete. {chapter_count} chapters prepared.")
+            return chapter_count
+        finally:
+            for d in [temp_dir, neutral_zone]:
+                if d.exists():
+                    shutil.rmtree(d, ignore_errors=True)
+
+    @staticmethod
     def import_book(epub_path, voice, progress_callback, log_callback=None, cancel_check=None):
         """
         Runs the full pipeline in a background thread.
@@ -560,155 +710,15 @@ class BookManager:
                 if is_cancelled():
                     log("Import canceled during extraction setup.")
                     return False
-                
-                temp_dir = Path("temp_extraction")
-                neutral_zone = Path("temp_isolated_html")
-    
-                # Clean temp folders
-                for d in [temp_dir, neutral_zone]:
-                    if d.exists(): shutil.rmtree(d)
-                neutral_zone.mkdir()
-                temp_dir.mkdir()
-
-                # Unpack EPUB
-                log(f"Unpacking EPUB to {temp_dir}...")
-                cmd = [calibre_exe, str(epub_file), str(temp_dir)]
-                
-                result = subprocess.run(
-                    cmd,
-                    shell=False,
-                    capture_output=True,
-                    text=True,
-                    encoding='utf-8',
-                    errors='replace',
+                chapter_count = BookManager._extract_chapter_texts(
+                    epub_file=epub_file,
+                    content_dir=content_dir,
+                    calibre_exe=calibre_exe,
+                    is_cancelled=is_cancelled,
+                    log=log,
                 )
-                if result.returncode != 0:
-                    log(f"Calibre Error: {result.stderr}")
+                if chapter_count is None:
                     return False
-                
-                # Finding reading order
-                opf_files = list(temp_dir.rglob("*.opf"))
-                ordered_html_files = []
-                
-                if opf_files:
-                    try:
-                        opf_path = opf_files[0]
-                        log(f"Parsing OPF for reading order: {opf_path.name}")
-                        with open(opf_path, 'r', encoding='utf-8', errors='replace') as f:
-                            opf_content = f.read()
-                        
-                        import xml.etree.ElementTree as ET
-                        opf_content = re.sub(r' xmlns="[^"]+"', '', opf_content, count=1)
-                        root = ET.fromstring(opf_content)
-                        
-                        manifest = {}
-                        for item in root.findall(".//manifest/item"):
-                            manifest[item.get("id")] = item.get("href")
-                            
-                        spine = [itemref.get("idref") for itemref in root.findall(".//spine/itemref")]
-                        
-                        opf_dir = opf_path.parent
-                        for item_id in spine:
-                            if item_id in manifest:
-                                rel_path = manifest[item_id]
-                                full_path = opf_dir / rel_path
-                                if full_path.exists():
-                                    ordered_html_files.append(full_path)
-                                    
-                        log(f"Found {len(ordered_html_files)} chapters in spine.")
-                    except Exception as e:
-                        log(f"Failed to parse OPF: {e}. Falling back to name sort.")
-                        ordered_html_files = []
-
-                if not ordered_html_files:
-                    ordered_html_files = sorted(list(temp_dir.rglob("*.html")) + list(temp_dir.rglob("*.xhtml")))
-
-                html_files = ordered_html_files
-                log(f"Processing {len(html_files)} files...")
-
-                # Parallel Extraction
-                max_workers = BookManager._get_extract_worker_count()
-                log(f"Starting parallel extraction with {max_workers} workers...")
-                
-                def convert_chunk(args):
-                    if is_cancelled():
-                        return None
-                    idx, html_path = args
-                    chunk_name = f"chunk_{idx:04d}{html_path.suffix}"
-                    isolated_html = neutral_zone / chunk_name
-                    shutil.copy(html_path, isolated_html)
-                    
-                    out_txt_name = f"ch_{idx+1:03d}.txt"
-                    out_txt = content_dir / out_txt_name
-                    # Keep .txt extension so calibre resolves output plugin correctly.
-                    out_txt_tmp = content_dir / f"{out_txt.stem}.part.txt"
-                    
-                    log(f"Converting {html_path.name} -> {out_txt_name}")
-                    cmd = [
-                        calibre_exe,
-                        str(isolated_html),
-                        str(out_txt_tmp),
-                        "--txt-output-format=plain",
-                        "--smarten-punctuation",
-                    ]
-                    for attempt in (1, 2):
-                        try:
-                            result = subprocess.run(
-                                cmd,
-                                shell=False,
-                                capture_output=True,
-                                encoding="utf-8",
-                                errors="replace",
-                            )
-                            if result.returncode == 0 and out_txt_tmp.exists() and out_txt_tmp.stat().st_size > 0:
-                                os.replace(out_txt_tmp, out_txt)
-                                return idx + 1
-
-                            err_tail = (result.stderr or "").strip()[-600:]
-                            out_tail = (result.stdout or "").strip()[-300:]
-                            log(
-                                f"Failed conversion (attempt {attempt}/2): {html_path.name} "
-                                f"(rc={result.returncode})"
-                            )
-                            if err_tail:
-                                log(f"stderr: {err_tail}")
-                            if out_tail:
-                                log(f"stdout: {out_tail}")
-                            if out_txt_tmp.exists():
-                                try:
-                                    out_txt_tmp.unlink()
-                                except Exception:
-                                    pass
-                            if attempt == 1:
-                                time.sleep(0.15)
-                        except Exception as exc:
-                            log(f"Exception converting {html_path.name} (attempt {attempt}/2): {exc}")
-                            if attempt == 1:
-                                time.sleep(0.15)
-                        finally:
-                            if out_txt_tmp.exists():
-                                try:
-                                    out_txt_tmp.unlink()
-                                except Exception:
-                                    pass
-                    return None
-
-                tasks = [(i, h) for i, h in enumerate(html_files) if h.stat().st_size >= 300]
-                if max_workers <= 1:
-                    results = [r for r in map(convert_chunk, tasks) if r is not None]
-                else:
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                        results = [r for r in executor.map(convert_chunk, tasks) if r is not None]
-                
-                chapter_count = len(results)
-                if is_cancelled():
-                    log("Import canceled during text extraction.")
-                    return False
-
-                # Cleanup Temp
-                shutil.rmtree(temp_dir)
-                shutil.rmtree(neutral_zone)
-                log(f"Extraction complete. {chapter_count} chapters prepared.")
 
                 # SAVE METADATA (EARLY)
                 metadata = {

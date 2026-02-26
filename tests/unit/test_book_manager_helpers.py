@@ -127,6 +127,28 @@ def test_resolve_book_target_for_stored_library_source(tmp_path, monkeypatch):
     assert book_dir == library / "Book_A"
 
 
+def test_extract_chapter_texts_returns_none_on_unpack_failure(tmp_path, monkeypatch):
+    content_dir = tmp_path / "content"
+    content_dir.mkdir(parents=True)
+    epub = tmp_path / "book.epub"
+    epub.write_text("epub", encoding="utf-8")
+
+    class _FailedRunResult:
+        returncode = 1
+        stderr = "boom"
+
+    monkeypatch.setattr("system.book_manager.subprocess.run", lambda *args, **kwargs: _FailedRunResult())
+
+    out = BookManager._extract_chapter_texts(
+        epub_file=epub,
+        content_dir=content_dir,
+        calibre_exe="ebook-convert",
+        is_cancelled=lambda: False,
+        log=lambda _msg: None,
+    )
+    assert out is None
+
+
 def test_tokenize_for_alignment_normalizes_curly_punctuation():
     tokens = BookManager.tokenize_for_alignment("Don’t stop — now")
 
