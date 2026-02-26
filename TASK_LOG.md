@@ -54,8 +54,8 @@ Status key:
 - `[ ]` Extract richer metadata from EPUB/OPF.
   - author, canonical title, cover reference.
   - preserve normalized fallback values if extraction fails.
-- `[ ]` Improve library search and filtering.
-  - search by title + author + voice.
+- `[-]` Improve library search and filtering.
+  - [x] search by title + author + voice.
   - optional quick filters: incomplete/complete, recently read.
 - `[ ]` Expose real reading progress in library cards.
   - keep import progress and reading progress as separate fields.

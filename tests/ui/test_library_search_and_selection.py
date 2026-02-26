@@ -61,6 +61,50 @@ def test_refresh_library_filters_by_title(qapp, monkeypatch):
     window.close()
 
 
+def test_refresh_library_filters_by_author_and_voice(qapp, monkeypatch):
+    books = [
+        {
+            "title": "Dune",
+            "author": "Frank Herbert",
+            "voice": "M3",
+            "path": "library/Dune",
+            "is_incomplete": False,
+            "last_chapter": 1,
+            "total_chapters": 1,
+            "content_chapters": 1,
+            "audio_chapters_ready": 1,
+            "aligned_chapters_ready": 1,
+        },
+        {
+            "title": "Project Hail Mary",
+            "author": "Andy Weir",
+            "voice": "F1",
+            "path": "library/Project_Hail_Mary",
+            "is_incomplete": False,
+            "last_chapter": 1,
+            "total_chapters": 1,
+            "content_chapters": 1,
+            "audio_chapters_ready": 1,
+            "aligned_chapters_ready": 1,
+        },
+    ]
+    window = _build_window(monkeypatch, books)
+
+    window.search.setText("weir")
+    window.refresh_library()
+    cards = _layout_cards(window)
+    assert len(cards) == 1
+    assert cards[0].book["title"] == "Project Hail Mary"
+
+    window.search.setText("m3")
+    window.refresh_library()
+    cards = _layout_cards(window)
+    assert len(cards) == 1
+    assert cards[0].book["title"] == "Dune"
+
+    window.close()
+
+
 def test_refresh_library_prioritizes_incomplete_books(qapp, monkeypatch):
     books = [
         {

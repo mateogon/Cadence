@@ -1888,7 +1888,13 @@ class MainWindow(QtWidgets.QMainWindow):
         books = BookManager.get_books()
         q = self.search.text().strip().lower()
         if q:
-            books = [b for b in books if q in b.get("title", "").lower()]
+            books = [
+                b
+                for b in books
+                if q in str(b.get("title", "")).lower()
+                or q in str(b.get("author", "")).lower()
+                or q in str(b.get("voice", "")).lower()
+            ]
         books.sort(key=lambda b: (not b.get("is_incomplete", False), b.get("title", "").lower()))
 
         self._clear_book_cards()
