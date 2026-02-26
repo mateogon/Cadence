@@ -140,6 +140,46 @@ def test_refresh_library_prioritizes_incomplete_books(qapp, monkeypatch):
     window.close()
 
 
+def test_refresh_library_filter_dropdown_incomplete_complete(qapp, monkeypatch):
+    books = [
+        {
+            "title": "Complete Book",
+            "path": "library/complete",
+            "is_incomplete": False,
+            "last_chapter": 2,
+            "total_chapters": 2,
+            "content_chapters": 2,
+            "audio_chapters_ready": 2,
+            "aligned_chapters_ready": 2,
+        },
+        {
+            "title": "Incomplete Book",
+            "path": "library/incomplete",
+            "is_incomplete": True,
+            "last_chapter": 1,
+            "total_chapters": 2,
+            "content_chapters": 2,
+            "audio_chapters_ready": 1,
+            "aligned_chapters_ready": 1,
+        },
+    ]
+    window = _build_window(monkeypatch, books)
+
+    window.library_filter.setCurrentText("Incomplete")
+    window.refresh_library()
+    cards = _layout_cards(window)
+    assert len(cards) == 1
+    assert cards[0].book["title"] == "Incomplete Book"
+
+    window.library_filter.setCurrentText("Complete")
+    window.refresh_library()
+    cards = _layout_cards(window)
+    assert len(cards) == 1
+    assert cards[0].book["title"] == "Complete Book"
+
+    window.close()
+
+
 def test_book_card_meta_shows_read_and_ready_progress(qapp):
     book = {
         "title": "Progress Book",

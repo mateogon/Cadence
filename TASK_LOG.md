@@ -54,12 +54,12 @@ Status key:
 - `[x]` Extract richer metadata from EPUB/OPF.
   - author, canonical title, cover reference.
   - preserve normalized fallback values if extraction fails.
-- `[-]` Improve library search and filtering.
+- `[x]` Improve library search and filtering.
   - [x] search by title + author + voice.
-  - optional quick filters: incomplete/complete, recently read.
-- `[-]` Expose real reading progress in library cards.
+  - [x] optional quick filters: incomplete/complete.
+- `[x]` Expose real reading progress in library cards.
   - [x] keep import progress and reading progress as separate fields.
-  - avoid overloading `last_chapter` semantics.
+  - [x] avoid overloading `last_chapter` semantics.
 
 ## Phase 5: Engineering Quality Gates
 - `[-]` Add lint/type tooling.

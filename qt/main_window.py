@@ -1676,9 +1676,20 @@ class MainWindow(QtWidgets.QMainWindow):
         m.addLayout(header)
 
         self.search = QtWidgets.QLineEdit()
-        self.search.setPlaceholderText("Search book title...")
+        self.search.setPlaceholderText("Search title, author, or voice...")
         self.search.textChanged.connect(self.refresh_library)
         m.addWidget(self.search)
+
+        filter_row = QtWidgets.QHBoxLayout()
+        filter_lbl = QtWidgets.QLabel("Filter")
+        filter_lbl.setObjectName("SectionLabel")
+        filter_row.addWidget(filter_lbl, 0)
+        self.library_filter = QtWidgets.QComboBox()
+        self.library_filter.addItems(["All", "Incomplete", "Complete"])
+        self.library_filter.currentTextChanged.connect(self.refresh_library)
+        filter_row.addWidget(self.library_filter, 0)
+        filter_row.addStretch(1)
+        m.addLayout(filter_row)
 
         self.list_shell = QtWidgets.QFrame()
         self.list_shell.setObjectName("ListShell")
@@ -1915,6 +1926,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 or q in str(b.get("author", "")).lower()
                 or q in str(b.get("voice", "")).lower()
             ]
+        selected_filter = self.library_filter.currentText().strip().lower()
+        if selected_filter == "incomplete":
+            books = [b for b in books if bool(b.get("is_incomplete", False))]
+        elif selected_filter == "complete":
+            books = [b for b in books if not bool(b.get("is_incomplete", False))]
         books.sort(key=lambda b: (not b.get("is_incomplete", False), b.get("title", "").lower()))
 
         self._clear_book_cards()
