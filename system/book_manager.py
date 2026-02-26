@@ -328,6 +328,117 @@ class BookManager:
         return [{"word": t["text"], "start": t.get("start", 0), "end": t.get("end", 0)} for t in txt_tokens]
 
     @staticmethod
+    def _normalize_source_to_epub(source_file, source_ext, source_dir, calibre_exe, log):
+        """
+        Normalize input book to an EPUB file used by downstream extraction.
+        Returns (epub_file, stored_epub_name) or (None, None) on conversion failure.
+        """
+        if source_ext == ".epub":
+            return source_file, source_file.name
+
+        stored_epub_name = f"{source_file.stem}.epub"
+        epub_file = source_dir / stored_epub_name
+        if epub_file.exists() and epub_file.stat().st_size > 0:
+            return epub_file, stored_epub_name
+
+        log(f"Converting {source_file.suffix} -> EPUB for import resume support...")
+        convert_cmd = [calibre_exe, str(source_file), str(epub_file)]
+        convert_result = subprocess.run(
+            convert_cmd,
+            shell=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if convert_result.returncode != 0 or not epub_file.exists():
+            err = (convert_result.stderr or "").strip()[-1200:]
+            out = (convert_result.stdout or "").strip()[-800:]
+            if err:
+                log(f"Calibre conversion error: {err}")
+            if out:
+                log(f"Calibre conversion output: {out}")
+            return None, None
+
+        log(f"Converted source to EPUB: {epub_file.name}")
+        return epub_file, stored_epub_name
+
+    @staticmethod
+    def _determine_resume_state(book_dir, voice, log):
+        """
+        Determine whether extraction is needed and whether prior metadata overrides
+        selected voice for resume consistency.
+        Returns (extract_needed, resolved_voice).
+        """
+        extract_needed = True
+        existing_txt = (
+            list((book_dir / "content").glob("ch_*.txt"))
+            if (book_dir / "content").exists()
+            else []
+        )
+        meta_path = book_dir / "metadata.json"
+
+        if meta_path.exists():
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    existing_meta = json.load(f)
+
+                existing_voice = str(existing_meta.get("voice", "")).strip()
+                if existing_voice:
+                    if existing_voice != voice:
+                        log(
+                            f"Using existing book voice '{existing_voice}' "
+                            f"instead of selected '{voice}' for resume."
+                        )
+                    voice = existing_voice
+
+                status = existing_meta.get("status")
+                if status in ["text_only", "synthesized", "complete"] or existing_txt:
+                    log(f"Resuming import for: {book_dir.name} (Status: {status})")
+                    extract_needed = False
+            except Exception:
+                pass
+        elif existing_txt:
+            log(f"Resuming import for: {book_dir.name} (Detected existing chapter text)")
+            extract_needed = False
+
+        return extract_needed, voice
+
+    @staticmethod
+    def _finalize_metadata(book_dir, content_dir, audio_dir, metadata):
+        final_txt = sorted(content_dir.glob("*.txt"))
+        total_chapters = len(final_txt)
+        audio_ready = sum(
+            1
+            for txt in final_txt
+            if (audio_dir / f"{txt.stem}.wav").exists()
+            and (audio_dir / f"{txt.stem}.wav").stat().st_size > 0
+        )
+        aligned_ready = sum(
+            1
+            for txt in final_txt
+            if (content_dir / f"{txt.stem}.json").exists()
+            and (content_dir / f"{txt.stem}.json").stat().st_size > 0
+        )
+
+        if total_chapters > 0 and aligned_ready == total_chapters:
+            metadata["status"] = "complete"
+        elif total_chapters > 0 and audio_ready == total_chapters:
+            metadata["status"] = "synthesized"
+        elif total_chapters > 0:
+            metadata["status"] = "text_only"
+        else:
+            metadata["status"] = "empty"
+
+        metadata["total_chapters"] = total_chapters
+        metadata["chapters"] = total_chapters
+        metadata["last_chapter"] = aligned_ready
+
+        with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=4)
+        return metadata
+
+    @staticmethod
     def import_book(epub_path, voice, progress_callback, log_callback=None, cancel_check=None):
         """
         Runs the full pipeline in a background thread.
@@ -391,34 +502,15 @@ class BookManager:
                 log("Import canceled before start.")
                 return False
 
-            # Normalize all imports to a source EPUB so the existing extraction/alignment
-            # pipeline and resume flow stay unchanged.
-            if source_ext == ".epub":
-                epub_file = source_file
-                stored_epub_name = source_file.name
-            else:
-                stored_epub_name = f"{source_file.stem}.epub"
-                epub_file = source_dir / stored_epub_name
-                if not (epub_file.exists() and epub_file.stat().st_size > 0):
-                    log(f"Converting {source_file.suffix} -> EPUB for import resume support...")
-                    convert_cmd = [calibre_exe, str(source_file), str(epub_file)]
-                    convert_result = subprocess.run(
-                        convert_cmd,
-                        shell=False,
-                        capture_output=True,
-                        text=True,
-                        encoding="utf-8",
-                        errors="replace",
-                    )
-                    if convert_result.returncode != 0 or not epub_file.exists():
-                        err = (convert_result.stderr or "").strip()[-1200:]
-                        out = (convert_result.stdout or "").strip()[-800:]
-                        if err:
-                            log(f"Calibre conversion error: {err}")
-                        if out:
-                            log(f"Calibre conversion output: {out}")
-                        return False
-                    log(f"Converted source to EPUB: {epub_file.name}")
+            epub_file, stored_epub_name = BookManager._normalize_source_to_epub(
+                source_file=source_file,
+                source_ext=source_ext,
+                source_dir=source_dir,
+                calibre_exe=calibre_exe,
+                log=log,
+            )
+            if not epub_file or not stored_epub_name:
+                return False
 
             # Keep original source book file for traceability/recovery (if not already inside source/).
             try:
@@ -429,37 +521,11 @@ class BookManager:
                 pass
 
             # 1. Setup Folders & Check Resume
-            extract_needed = True
-            if book_dir.exists():
-                existing_txt = list((book_dir / "content").glob("ch_*.txt")) if (book_dir / "content").exists() else []
-                meta_path = book_dir / "metadata.json"
-                if meta_path.exists():
-                    try:
-                        with open(meta_path, "r", encoding="utf-8") as f:
-                            existing_meta = json.load(f)
-
-                        # Keep prior voice on resume so chapter output remains consistent.
-                        existing_voice = str(existing_meta.get("voice", "")).strip()
-                        if existing_voice:
-                            if existing_voice != voice:
-                                log(
-                                    f"Using existing book voice '{existing_voice}' "
-                                    f"instead of selected '{voice}' for resume."
-                                )
-                            voice = existing_voice
-
-                        # Resume if text/audio pipeline already started.
-                        status = existing_meta.get("status")
-                        if status in ["text_only", "synthesized", "complete"] or existing_txt:
-                            log(f"Resuming import for: {book_name} (Status: {status})")
-                            extract_needed = False
-                    except Exception:
-                        pass
-                elif existing_txt:
-                    log(f"Resuming import for: {book_name} (Detected existing chapter text)")
-                    extract_needed = False
-            else:
-                content_dir.mkdir(parents=True)
+            extract_needed, voice = BookManager._determine_resume_state(
+                book_dir=book_dir,
+                voice=voice,
+                log=log,
+            )
             # Keep source EPUB in book folder for one-click resume.
             stored_epub = source_dir / stored_epub_name
             try:
@@ -1113,36 +1179,12 @@ class BookManager:
 
             # --- FINALIZE METADATA ---
             log("Finalizing metadata...")
-            final_txt = sorted(content_dir.glob("*.txt"))
-            total_chapters = len(final_txt)
-            audio_ready = sum(
-                1
-                for txt in final_txt
-                if (audio_dir / f"{txt.stem}.wav").exists()
-                and (audio_dir / f"{txt.stem}.wav").stat().st_size > 0
+            BookManager._finalize_metadata(
+                book_dir=book_dir,
+                content_dir=content_dir,
+                audio_dir=audio_dir,
+                metadata=metadata,
             )
-            aligned_ready = sum(
-                1
-                for txt in final_txt
-                if (content_dir / f"{txt.stem}.json").exists()
-                and (content_dir / f"{txt.stem}.json").stat().st_size > 0
-            )
-
-            if total_chapters > 0 and aligned_ready == total_chapters:
-                metadata["status"] = "complete"
-            elif total_chapters > 0 and audio_ready == total_chapters:
-                metadata["status"] = "synthesized"
-            elif total_chapters > 0:
-                metadata["status"] = "text_only"
-            else:
-                metadata["status"] = "empty"
-
-            metadata["total_chapters"] = total_chapters
-            metadata["chapters"] = total_chapters
-            metadata["last_chapter"] = aligned_ready
-
-            with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
-                json.dump(metadata, f, indent=4)
                 
             progress_callback(1.0, "Ready!")
             log("Import process completed successfully.")

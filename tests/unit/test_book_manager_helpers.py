@@ -64,6 +64,42 @@ def test_get_calibre_executable_returns_none_when_missing(monkeypatch):
     assert BookManager._get_calibre_executable() is None
 
 
+def test_normalize_source_to_epub_noop_for_epub(tmp_path):
+    source = tmp_path / "book.epub"
+    source.write_text("epub-bytes", encoding="utf-8")
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+
+    epub_file, stored_name = BookManager._normalize_source_to_epub(
+        source_file=source,
+        source_ext=".epub",
+        source_dir=source_dir,
+        calibre_exe="ebook-convert",
+        log=lambda _msg: None,
+    )
+
+    assert epub_file == source
+    assert stored_name == "book.epub"
+
+
+def test_finalize_metadata_sets_complete_status(tmp_path):
+    book_dir = tmp_path / "Book"
+    content_dir = book_dir / "content"
+    audio_dir = book_dir / "audio"
+    content_dir.mkdir(parents=True)
+    audio_dir.mkdir(parents=True)
+    (content_dir / "ch_001.txt").write_text("hello", encoding="utf-8")
+    (content_dir / "ch_001.json").write_text("[]", encoding="utf-8")
+    (audio_dir / "ch_001.wav").write_bytes(b"RIFF....WAVEfmt ")
+
+    metadata = {"title": "Book", "voice": "M3"}
+    out = BookManager._finalize_metadata(book_dir, content_dir, audio_dir, metadata)
+
+    assert out["status"] == "complete"
+    assert out["total_chapters"] == 1
+    assert out["last_chapter"] == 1
+
+
 def test_tokenize_for_alignment_normalizes_curly_punctuation():
     tokens = BookManager.tokenize_for_alignment("Don’t stop — now")
 
