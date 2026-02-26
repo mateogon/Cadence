@@ -1,3 +1,6 @@
+import sys
+import types
+
 from system.book_manager import BookManager
 
 
@@ -276,6 +279,48 @@ def test_run_streaming_pipeline_worker_start_timeout_falls_back(tmp_path, monkey
 
     assert ok is True
     assert any("startup failed, using fallback mode" in msg for msg in logs)
+
+
+def test_run_streaming_pipeline_cancel_mid_synthesis_returns_false(tmp_path, monkeypatch):
+    book_dir = tmp_path / "Book"
+    content_dir = book_dir / "content"
+    audio_dir = book_dir / "audio"
+    content_dir.mkdir(parents=True)
+    audio_dir.mkdir(parents=True)
+    (content_dir / "ch_001.txt").write_text("chapter one", encoding="utf-8")
+    (content_dir / "ch_002.txt").write_text("chapter two", encoding="utf-8")
+
+    state = {"cancelled": False}
+
+    fake_mod = types.ModuleType("adapters.supertonic_backend")
+
+    class _FakeBackend:
+        def ensure_model(self):
+            return self
+
+        def synthesize(self, text, voice, max_chars=800):
+            state["cancelled"] = True
+            return None
+
+        def save_audio(self, wav, output_path):
+            return None
+
+    fake_mod.SupertonicBackend = _FakeBackend
+    monkeypatch.setitem(sys.modules, "adapters.supertonic_backend", fake_mod)
+
+    metadata = {"title": "Book", "voice": "M3"}
+    ok = BookManager._run_streaming_pipeline(
+        book_dir=book_dir,
+        content_dir=content_dir,
+        audio_dir=audio_dir,
+        voice="M3",
+        metadata=metadata,
+        progress_callback=lambda _pct, _msg: None,
+        is_cancelled=lambda: bool(state["cancelled"]),
+        log=lambda _msg: None,
+    )
+
+    assert ok is False
 
 
 def test_tokenize_for_alignment_normalizes_curly_punctuation():
