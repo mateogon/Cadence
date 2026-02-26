@@ -3,7 +3,7 @@ from pathlib import Path
 import qt.main_window as mw
 
 
-def _build_window(monkeypatch, books):
+def _build_window(monkeypatch, books, stub_chapter_selected=True):
     monkeypatch.setattr(mw.BookManager, "get_books", staticmethod(lambda: list(books)))
     monkeypatch.setattr(mw.MainWindow, "_apply_profile_card_shadows", lambda self: None)
     monkeypatch.setattr(mw.MainWindow, "_apply_profile_button_depths", lambda self: None)
@@ -11,7 +11,8 @@ def _build_window(monkeypatch, books):
     monkeypatch.setattr(mw.MainWindow, "_apply_player_settings", lambda self: None)
     monkeypatch.setattr(mw.MainWindow, "_init_media_player", lambda self: None)
     monkeypatch.setattr(mw.MainWindow, "_layout_bottom_cap_divider", lambda self: None)
-    monkeypatch.setattr(mw.MainWindow, "_on_player_chapter_selected", lambda self, row: None)
+    if stub_chapter_selected:
+        monkeypatch.setattr(mw.MainWindow, "_on_player_chapter_selected", lambda self, row: None)
     return mw.MainWindow(debug=False)
 
 
@@ -116,5 +117,74 @@ def test_open_player_page_selects_last_chapter(qapp, monkeypatch, tmp_path):
     assert window.player_chapter_list.currentRow() == 1
     assert window.player_chapter_meta.text() == "Chapter 2/2"
     assert window.view_stack.currentWidget() is window.player_page
+
+    window.close()
+
+
+def test_open_player_page_prefers_saved_book_position(qapp, monkeypatch, tmp_path):
+    settings_file = tmp_path / "player_settings.json"
+    book_dir = tmp_path / "Saved_Book"
+    content = book_dir / "content"
+    content.mkdir(parents=True)
+    (content / "ch_001.txt").write_text("chapter 1", encoding="utf-8")
+    (content / "ch_002.txt").write_text("chapter 2", encoding="utf-8")
+    (content / "ch_003.txt").write_text("chapter 3", encoding="utf-8")
+
+    book_path_key = str(book_dir.resolve())
+    settings_file.write_text(
+        (
+            "{\n"
+            '  "reading_view_mode": "context",\n'
+            '  "book_positions": {\n'
+            f'    "{book_path_key}": 3\n'
+            "  }\n"
+            "}\n"
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(mw, "PLAYER_SETTINGS_FILE", settings_file)
+
+    window = _build_window(monkeypatch, books=[])
+
+    book = {
+        "title": "Saved Book",
+        "path": str(book_dir),
+        "last_chapter": 1,
+        "total_chapters": 3,
+    }
+    window.open_player_page(book)
+
+    assert window.player_chapter_list.currentRow() == 2
+    assert window.player_chapter_meta.text() == "Chapter 3/3"
+
+    window.close()
+
+
+def test_chapter_selection_persists_book_position(qapp, monkeypatch, tmp_path):
+    settings_file = tmp_path / "player_settings.json"
+    monkeypatch.setattr(mw, "PLAYER_SETTINGS_FILE", settings_file)
+
+    book_dir = tmp_path / "Resume_Book"
+    content = book_dir / "content"
+    content.mkdir(parents=True)
+    (content / "ch_001.txt").write_text("chapter 1", encoding="utf-8")
+    (content / "ch_002.txt").write_text("chapter 2", encoding="utf-8")
+
+    window = _build_window(monkeypatch, books=[], stub_chapter_selected=False)
+    window.open_player_page(
+        {
+            "title": "Resume Book",
+            "path": str(book_dir),
+            "last_chapter": 1,
+            "total_chapters": 2,
+        }
+    )
+
+    window.player_chapter_list.setCurrentRow(1)
+
+    saved = settings_file.read_text(encoding="utf-8")
+    assert str(book_dir.resolve()) in saved
+    assert '"book_positions"' in saved
+    assert ": 2" in saved
 
     window.close()

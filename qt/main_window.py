@@ -420,6 +420,7 @@ PLAYER_DEFAULTS = {
     "context_highlight_style": "underline",
     "playback_speed": 1.0,
     "sync_offset": 0.0,
+    "book_positions": {},
 }
 
 
@@ -1946,10 +1947,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_player_chapter_availability()
 
         if txt_files:
-            target_row = 0
-            last = int(book.get("last_chapter", 1) or 1)
-            if 1 <= last <= len(txt_files):
-                target_row = last - 1
+            target_row = self._resolve_resume_row(book, len(txt_files))
             self.player_chapter_list.setCurrentRow(target_row)
             self.player_chapter_meta.setText(f"Chapter {target_row + 1}/{len(txt_files)}")
         else:
@@ -1960,6 +1958,55 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layout_bottom_cap_divider()
         QtCore.QTimer.singleShot(0, self._refresh_player_title_elide)
         QtCore.QTimer.singleShot(25, self._refresh_player_title_elide)
+
+    def _book_resume_key(self, book: dict):
+        raw = str((book or {}).get("path", "")).strip()
+        if not raw:
+            return ""
+        try:
+            return str(Path(raw).resolve())
+        except Exception:
+            return raw
+
+    def _resolve_resume_row(self, book: dict, chapter_count: int):
+        if chapter_count <= 0:
+            return 0
+
+        settings_chapter = 0
+        key = self._book_resume_key(book)
+        positions = self._player_settings.get("book_positions", {})
+        if isinstance(positions, dict) and key:
+            try:
+                settings_chapter = int(positions.get(key, 0) or 0)
+            except Exception:
+                settings_chapter = 0
+
+        metadata_chapter = 0
+        try:
+            metadata_chapter = int((book or {}).get("last_chapter", 0) or 0)
+        except Exception:
+            metadata_chapter = 0
+
+        chosen = settings_chapter if settings_chapter > 0 else metadata_chapter
+        if 1 <= chosen <= chapter_count:
+            return chosen - 1
+        return 0
+
+    def _save_book_resume_chapter(self, chapter_num: int):
+        if not self._active_book:
+            return
+        key = self._book_resume_key(self._active_book)
+        if not key:
+            return
+        chapter_num = int(max(1, chapter_num))
+        positions = self._player_settings.get("book_positions")
+        if not isinstance(positions, dict):
+            positions = {}
+        if int(positions.get(key, 0) or 0) == chapter_num:
+            return
+        positions[key] = chapter_num
+        self._player_settings["book_positions"] = positions
+        self._save_player_settings()
 
     def _set_player_title(self, title: str):
         self._player_title_full = str(title or "Book")
@@ -1998,6 +2045,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         total = max(1, self.player_chapter_list.count())
         self.player_chapter_meta.setText(f"Chapter {row + 1}/{total}")
+        self._save_book_resume_chapter(row + 1)
         try:
             self._load_chapter_text_and_timing(txt, jsn)
         except Exception as exc:
@@ -2524,6 +2572,20 @@ class MainWindow(QtWidgets.QMainWindow):
                     data.update(loaded)
         except Exception:
             pass
+        positions = data.get("book_positions")
+        if not isinstance(positions, dict):
+            data["book_positions"] = {}
+        else:
+            normalized = {}
+            for key, value in positions.items():
+                try:
+                    chapter_num = int(value)
+                except Exception:
+                    continue
+                if chapter_num < 1:
+                    continue
+                normalized[str(key)] = chapter_num
+            data["book_positions"] = normalized
         return data
 
     def _normalized_hex(self, raw: str, default_hex: str) -> str:
