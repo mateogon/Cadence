@@ -70,6 +70,7 @@ def test_import_book_extraction_failure_returns_false(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(bm, "LIBRARY_PATH", tmp_path / "library")
     bm.LIBRARY_PATH.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: "ebook-convert"))
 
     source = tmp_path / "demo.epub"
     source.write_text("epub-bytes", encoding="utf-8")
@@ -99,6 +100,7 @@ def test_import_book_resume_with_ready_artifacts_finishes_complete(tmp_path, mon
     monkeypatch.setattr(bm, "LIBRARY_PATH", tmp_path / "library")
     bm.LIBRARY_PATH.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(bm.BookManager, "_detect_gpu_free_memory_mib", staticmethod(lambda: None))
+    monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: "ebook-convert"))
 
     book_dir = bm.LIBRARY_PATH / "Sample_Book"
     source_dir = book_dir / "source"

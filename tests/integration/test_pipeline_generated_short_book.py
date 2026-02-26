@@ -84,6 +84,7 @@ def test_pipeline_generated_short_book(tmp_path, monkeypatch):
     library.mkdir()
     monkeypatch.setattr(bm, "LIBRARY_PATH", library)
     monkeypatch.setattr(bm.BookManager, "_detect_gpu_free_memory_mib", staticmethod(lambda: None))
+    monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: "ebook-convert"))
 
     # Synthetic source "book" file.
     source_epub = tmp_path / "MiniBook.epub"
