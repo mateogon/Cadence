@@ -48,7 +48,7 @@ Status key:
   - [x] WhisperX startup timeout fallback.
   - [ ] per-chapter alignment timeout.
   - [x] cancellation mid-synthesis.
-  - [ ] cancellation mid-alignment.
+  - [x] cancellation mid-alignment.
 
 ## Phase 4: Metadata and Library UX
 - `[ ]` Extract richer metadata from EPUB/OPF.

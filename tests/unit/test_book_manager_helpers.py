@@ -323,6 +323,86 @@ def test_run_streaming_pipeline_cancel_mid_synthesis_returns_false(tmp_path, mon
     assert ok is False
 
 
+def test_run_streaming_pipeline_cancel_mid_alignment_returns_false(tmp_path, monkeypatch):
+    book_dir = tmp_path / "Book"
+    content_dir = book_dir / "content"
+    audio_dir = book_dir / "audio"
+    content_dir.mkdir(parents=True)
+    audio_dir.mkdir(parents=True)
+    (content_dir / "ch_001.txt").write_text("chapter one", encoding="utf-8")
+    (audio_dir / "ch_001.wav").write_bytes(b"RIFF....WAVEfmt ")
+
+    class _WorkerStdout:
+        def readline(self):
+            return ""
+
+    class _DummyStdin:
+        def write(self, _line):
+            return None
+
+        def flush(self):
+            return None
+
+    class _WorkerProc:
+        def __init__(self):
+            self.stdout = _WorkerStdout()
+            self.stdin = _DummyStdin()
+
+        def wait(self, timeout=None):
+            return 0
+
+        def kill(self):
+            return None
+
+    class _CliProc:
+        def __init__(self):
+            self.stdin = _DummyStdin()
+            self._terminated = False
+
+        def poll(self):
+            return 0 if self._terminated else None
+
+        def terminate(self):
+            self._terminated = True
+
+        def wait(self, timeout=None):
+            self._terminated = True
+            return 0
+
+        def kill(self):
+            self._terminated = True
+
+    def _fake_popen(cmd, *args, **kwargs):
+        if len(cmd) >= 2 and str(cmd[1]).endswith("whisperx_align_worker.py"):
+            return _WorkerProc()
+        return _CliProc()
+
+    calls = {"n": 0}
+
+    def _cancel_check():
+        calls["n"] += 1
+        return calls["n"] >= 6
+
+    monkeypatch.setenv("CADENCE_WHISPERX_START_TIMEOUT_SEC", "0")
+    monkeypatch.setattr("system.book_manager.subprocess.Popen", _fake_popen)
+
+    metadata = {"title": "Book", "voice": "M3"}
+    logs = []
+    ok = BookManager._run_streaming_pipeline(
+        book_dir=book_dir,
+        content_dir=content_dir,
+        audio_dir=audio_dir,
+        voice="M3",
+        metadata=metadata,
+        progress_callback=lambda _pct, _msg: None,
+        is_cancelled=_cancel_check,
+        log=logs.append,
+    )
+
+    assert ok is False
+    assert any("Canceled WhisperX" in msg for msg in logs)
+
+
 def test_tokenize_for_alignment_normalizes_curly_punctuation():
     tokens = BookManager.tokenize_for_alignment("Don’t stop — now")
 
