@@ -364,6 +364,50 @@ class BookManager:
         return epub_file, stored_epub_name
 
     @staticmethod
+    def _resolve_book_target(source_file):
+        """
+        Resolve target library directory for this source.
+        If source is a stored library source EPUB, pin import to that existing book.
+        Returns (book_dir, book_name).
+        """
+        book_dir = None
+        try:
+            resolved = source_file.resolve()
+            if (
+                resolved.parent.name.lower() == "source"
+                and resolved.parent.parent.parent.resolve() == LIBRARY_PATH.resolve()
+            ):
+                book_dir = resolved.parent.parent
+        except Exception:
+            pass
+
+        if book_dir is None:
+            book_name = source_file.stem.replace(" ", "_")
+            book_dir = LIBRARY_PATH / book_name
+        else:
+            book_name = book_dir.name
+        return book_dir, book_name
+
+    @staticmethod
+    def _persist_source_artifacts(source_file, source_dir, epub_file, stored_epub_name):
+        # Keep original source file for traceability/recovery.
+        try:
+            original_copy = source_dir / source_file.name
+            if source_file.resolve() != original_copy.resolve():
+                shutil.copy2(source_file, original_copy)
+        except Exception:
+            pass
+
+        # Keep source EPUB in book folder for one-click resume.
+        stored_epub = source_dir / stored_epub_name
+        try:
+            if stored_epub.resolve() != epub_file.resolve():
+                shutil.copy2(epub_file, stored_epub)
+        except Exception:
+            pass
+        return stored_epub
+
+    @staticmethod
     def _determine_resume_state(book_dir, voice, log):
         """
         Determine whether extraction is needed and whether prior metadata overrides
@@ -473,23 +517,7 @@ class BookManager:
                     "to the executable path or add it to PATH."
                 )
 
-            # If using stored source EPUB (library/<book>/source/*.epub), lock to that book folder.
-            book_dir = None
-            try:
-                resolved = source_file.resolve()
-                if (
-                    resolved.parent.name.lower() == "source"
-                    and resolved.parent.parent.parent.resolve() == LIBRARY_PATH.resolve()
-                ):
-                    book_dir = resolved.parent.parent
-            except Exception:
-                pass
-
-            if book_dir is None:
-                book_name = source_file.stem.replace(" ", "_")  # Clean name
-                book_dir = LIBRARY_PATH / book_name
-            else:
-                book_name = book_dir.name
+            book_dir, book_name = BookManager._resolve_book_target(source_file)
 
             content_dir = book_dir / "content"
             source_dir = book_dir / "source"
@@ -512,28 +540,18 @@ class BookManager:
             if not epub_file or not stored_epub_name:
                 return False
 
-            # Keep original source book file for traceability/recovery (if not already inside source/).
-            try:
-                original_copy = source_dir / source_file.name
-                if source_file.resolve() != original_copy.resolve():
-                    shutil.copy2(source_file, original_copy)
-            except Exception:
-                pass
-
             # 1. Setup Folders & Check Resume
             extract_needed, voice = BookManager._determine_resume_state(
                 book_dir=book_dir,
                 voice=voice,
                 log=log,
             )
-            # Keep source EPUB in book folder for one-click resume.
-            stored_epub = source_dir / stored_epub_name
-            try:
-                if stored_epub.resolve() != epub_file.resolve():
-                    shutil.copy2(epub_file, stored_epub)
-            except Exception:
-                # If resolve/copy fails, continue pipeline without blocking.
-                pass
+            BookManager._persist_source_artifacts(
+                source_file=source_file,
+                source_dir=source_dir,
+                epub_file=epub_file,
+                stored_epub_name=stored_epub_name,
+            )
 
             # --- STEP 1: EXTRACTION (Calibre) ---
             if extract_needed:

@@ -100,6 +100,33 @@ def test_finalize_metadata_sets_complete_status(tmp_path):
     assert out["last_chapter"] == 1
 
 
+def test_resolve_book_target_for_new_source(tmp_path, monkeypatch):
+    library = tmp_path / "library"
+    library.mkdir()
+    monkeypatch.setattr("system.book_manager.LIBRARY_PATH", library)
+
+    source = tmp_path / "My Book.epub"
+    source.write_text("epub", encoding="utf-8")
+
+    book_dir, book_name = BookManager._resolve_book_target(source)
+    assert book_name == "My_Book"
+    assert book_dir == library / "My_Book"
+
+
+def test_resolve_book_target_for_stored_library_source(tmp_path, monkeypatch):
+    library = tmp_path / "library"
+    source_dir = library / "Book_A" / "source"
+    source_dir.mkdir(parents=True)
+    monkeypatch.setattr("system.book_manager.LIBRARY_PATH", library)
+
+    source = source_dir / "Book_A.epub"
+    source.write_text("epub", encoding="utf-8")
+
+    book_dir, book_name = BookManager._resolve_book_target(source)
+    assert book_name == "Book_A"
+    assert book_dir == library / "Book_A"
+
+
 def test_tokenize_for_alignment_normalizes_curly_punctuation():
     tokens = BookManager.tokenize_for_alignment("Don’t stop — now")
 
