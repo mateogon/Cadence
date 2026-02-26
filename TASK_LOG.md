@@ -44,9 +44,9 @@ Status key:
 - `[ ]` Replace broad silent exceptions with structured error handling.
   - Keep app resilient, but always log actionable context.
   - Avoid `except Exception: pass` unless explicitly justified.
-- `[-]` Add cancellation/timeout reliability tests.
+- `[x]` Add cancellation/timeout reliability tests.
   - [x] WhisperX startup timeout fallback.
-  - [ ] per-chapter alignment timeout.
+  - [x] per-chapter alignment timeout.
   - [x] cancellation mid-synthesis.
   - [x] cancellation mid-alignment.
 
