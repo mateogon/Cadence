@@ -239,7 +239,8 @@ class BookManager:
                     data["stored_epub_exists"] = bool(stored_epub)
                     data["path"] = str(folder)
                     books.append(data)
-                except Exception:
+                except Exception as exc:
+                    print(f"Skipping book folder '{folder}': {exc}")
                     continue
         return books
 
@@ -389,22 +390,24 @@ class BookManager:
         return book_dir, book_name
 
     @staticmethod
-    def _persist_source_artifacts(source_file, source_dir, epub_file, stored_epub_name):
+    def _persist_source_artifacts(source_file, source_dir, epub_file, stored_epub_name, log=None):
         # Keep original source file for traceability/recovery.
         try:
             original_copy = source_dir / source_file.name
             if source_file.resolve() != original_copy.resolve():
                 shutil.copy2(source_file, original_copy)
-        except Exception:
-            pass
+        except Exception as exc:
+            if log:
+                log(f"Warning: failed to persist original source copy: {exc}")
 
         # Keep source EPUB in book folder for one-click resume.
         stored_epub = source_dir / stored_epub_name
         try:
             if stored_epub.resolve() != epub_file.resolve():
                 shutil.copy2(epub_file, stored_epub)
-        except Exception:
-            pass
+        except Exception as exc:
+            if log:
+                log(f"Warning: failed to persist source EPUB copy: {exc}")
         return stored_epub
 
     @staticmethod
@@ -440,8 +443,8 @@ class BookManager:
                 if status in ["text_only", "synthesized", "complete"] or existing_txt:
                     log(f"Resuming import for: {book_dir.name} (Status: {status})")
                     extract_needed = False
-            except Exception:
-                pass
+            except Exception as exc:
+                log(f"Warning: failed to inspect existing metadata for resume: {exc}")
         elif existing_txt:
             log(f"Resuming import for: {book_dir.name} (Detected existing chapter text)")
             extract_needed = False
@@ -1175,6 +1178,7 @@ class BookManager:
                 source_dir=source_dir,
                 epub_file=epub_file,
                 stored_epub_name=stored_epub_name,
+                log=log,
             )
 
             # --- STEP 1: EXTRACTION (Calibre) ---

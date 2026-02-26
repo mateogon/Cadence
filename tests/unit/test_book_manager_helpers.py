@@ -152,6 +152,24 @@ def test_extract_chapter_texts_returns_none_on_unpack_failure(tmp_path, monkeypa
     assert out is None
 
 
+def test_determine_resume_state_logs_on_bad_metadata(tmp_path):
+    book_dir = tmp_path / "Book"
+    content_dir = book_dir / "content"
+    content_dir.mkdir(parents=True)
+    (book_dir / "metadata.json").write_text("{not-json", encoding="utf-8")
+
+    logs = []
+    extract_needed, voice = BookManager._determine_resume_state(
+        book_dir=book_dir,
+        voice="M3",
+        log=logs.append,
+    )
+
+    assert extract_needed is True
+    assert voice == "M3"
+    assert any("failed to inspect existing metadata" in msg.lower() for msg in logs)
+
+
 def test_run_streaming_pipeline_returns_false_when_cancelled_early(tmp_path):
     book_dir = tmp_path / "Book"
     content_dir = book_dir / "content"
