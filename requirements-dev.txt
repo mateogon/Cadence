@@ -1,3 +1,5 @@
 pytest
+ruff
+pre-commit
 pytest-mock
 pytest-qt

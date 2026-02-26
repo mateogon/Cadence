@@ -62,11 +62,11 @@ Status key:
   - avoid overloading `last_chapter` semantics.
 
 ## Phase 5: Engineering Quality Gates
-- `[ ]` Add lint/type tooling.
-  - `ruff` baseline with repo config.
-  - optional type checker (`mypy` or pyright) with pragmatic scope.
-- `[ ]` Add pre-commit hooks for fast local quality checks.
-- `[ ]` Update CI to run lint + tests together.
+- `[-]` Add lint/type tooling.
+  - [x] `ruff` baseline with repo config.
+  - [ ] optional type checker (`mypy` or pyright) with pragmatic scope.
+- `[x]` Add pre-commit hooks for fast local quality checks.
+- `[x]` Update CI to run lint + tests together.
 
 ## Phase 6: Documentation and Contributor Ops
 - `[ ]` Add contributor docs.
