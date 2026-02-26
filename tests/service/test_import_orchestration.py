@@ -44,6 +44,28 @@ def test_import_book_returns_false_for_unsupported_extension(tmp_path, monkeypat
     assert events == []
 
 
+def test_import_book_returns_false_when_calibre_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(bm, "LIBRARY_PATH", tmp_path / "library")
+    bm.LIBRARY_PATH.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: None))
+
+    source = tmp_path / "demo.epub"
+    source.write_text("epub-bytes", encoding="utf-8")
+
+    logs = []
+    events, progress = _progress_collector()
+    ok = bm.BookManager.import_book(
+        str(source),
+        "M3",
+        progress,
+        log_callback=logs.append,
+    )
+
+    assert ok is False
+    assert events == []
+    assert any("CADENCE_CALIBRE_PATH" in line for line in logs)
+
+
 def test_import_book_extraction_failure_returns_false(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(bm, "LIBRARY_PATH", tmp_path / "library")

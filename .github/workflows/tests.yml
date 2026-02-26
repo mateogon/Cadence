@@ -47,3 +47,26 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q tests/unit tests/service tests/integration tests/ui
+
+  tests-windows:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: minimal
+      QT_API: pyqt6
+      CADENCE_QT_API: pyqt6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.3 "numpy<2.0" soundfile tqdm pytest pytest-mock pytest-qt
+
+      - name: Run tests
+        run: python -m pytest -q tests/unit tests/service tests/integration tests/ui

@@ -11,12 +11,34 @@ import difflib
 from pathlib import Path
 
 # --- Configuration ---
-# Update these paths to point to your specific tools
+# Default Calibre CLI location on Windows. A custom path can be supplied via
+# CADENCE_CALIBRE_PATH (absolute path or command name).
 CALIBRE_PATH = r"C:\Program Files\Calibre2\ebook-convert.exe"
 LIBRARY_PATH = Path("library")
 LIBRARY_PATH.mkdir(exist_ok=True)
 
 class BookManager:
+    @staticmethod
+    def _get_calibre_executable():
+        configured = os.getenv("CADENCE_CALIBRE_PATH", "").strip()
+        if configured:
+            cfg_path = Path(configured)
+            if any(sep in configured for sep in ("/", "\\")) or cfg_path.suffix:
+                if cfg_path.exists():
+                    return str(cfg_path)
+                return None
+            resolved = shutil.which(configured)
+            return resolved if resolved else None
+
+        default_path = Path(CALIBRE_PATH)
+        if default_path.exists():
+            return str(default_path)
+
+        resolved = shutil.which("ebook-convert")
+        if resolved:
+            return resolved
+        return None
+
     @staticmethod
     def _get_extract_worker_count():
         """
@@ -119,7 +141,7 @@ class BookManager:
                 return max(400, int(env_value))
             except ValueError:
                 pass
-        return 1600
+        return 800
 
     @staticmethod
     def _get_whisperx_model_name():
@@ -133,7 +155,7 @@ class BookManager:
                 return max(1, int(env_value))
             except ValueError:
                 pass
-        return 24
+        return 16
 
     @staticmethod
     def _get_whisperx_compute_type():
@@ -333,6 +355,12 @@ class BookManager:
                 raise ValueError(
                     f"Unsupported format: {source_ext}. Supported: .epub, .mobi, .azw3"
                 )
+            calibre_exe = BookManager._get_calibre_executable()
+            if not calibre_exe:
+                raise FileNotFoundError(
+                    "Calibre 'ebook-convert' not found. Set CADENCE_CALIBRE_PATH "
+                    "to the executable path or add it to PATH."
+                )
 
             # If using stored source EPUB (library/<book>/source/*.epub), lock to that book folder.
             book_dir = None
@@ -373,7 +401,7 @@ class BookManager:
                 epub_file = source_dir / stored_epub_name
                 if not (epub_file.exists() and epub_file.stat().st_size > 0):
                     log(f"Converting {source_file.suffix} -> EPUB for import resume support...")
-                    convert_cmd = [CALIBRE_PATH, str(source_file), str(epub_file)]
+                    convert_cmd = [calibre_exe, str(source_file), str(epub_file)]
                     convert_result = subprocess.run(
                         convert_cmd,
                         shell=False,
@@ -460,7 +488,7 @@ class BookManager:
 
                 # Unpack EPUB
                 log(f"Unpacking EPUB to {temp_dir}...")
-                cmd = [CALIBRE_PATH, str(epub_file), str(temp_dir)]
+                cmd = [calibre_exe, str(epub_file), str(temp_dir)]
                 
                 result = subprocess.run(
                     cmd,
@@ -533,7 +561,7 @@ class BookManager:
                     
                     log(f"Converting {html_path.name} -> {out_txt_name}")
                     cmd = [
-                        CALIBRE_PATH,
+                        calibre_exe,
                         str(isolated_html),
                         str(out_txt_tmp),
                         "--txt-output-format=plain",

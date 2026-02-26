@@ -23,7 +23,7 @@ def test_get_extract_worker_count_ignores_invalid(monkeypatch):
 
 def test_get_tts_max_chunk_chars_defaults_and_floor(monkeypatch):
     monkeypatch.delenv("CADENCE_TTS_MAX_CHARS", raising=False)
-    assert BookManager._get_tts_max_chunk_chars() == 1600
+    assert BookManager._get_tts_max_chunk_chars() == 800
 
     monkeypatch.setenv("CADENCE_TTS_MAX_CHARS", "100")
     assert BookManager._get_tts_max_chunk_chars() == 400
@@ -31,13 +31,37 @@ def test_get_tts_max_chunk_chars_defaults_and_floor(monkeypatch):
 
 def test_get_whisperx_batch_size_defaults_and_validation(monkeypatch):
     monkeypatch.delenv("CADENCE_WHISPERX_BATCH_SIZE", raising=False)
-    assert BookManager._get_whisperx_batch_size() == 24
+    assert BookManager._get_whisperx_batch_size() == 16
 
     monkeypatch.setenv("CADENCE_WHISPERX_BATCH_SIZE", "8")
     assert BookManager._get_whisperx_batch_size() == 8
 
     monkeypatch.setenv("CADENCE_WHISPERX_BATCH_SIZE", "bad")
-    assert BookManager._get_whisperx_batch_size() == 24
+    assert BookManager._get_whisperx_batch_size() == 16
+
+
+def test_get_calibre_executable_prefers_explicit_command(monkeypatch):
+    monkeypatch.setenv("CADENCE_CALIBRE_PATH", "ebook-convert-custom")
+    monkeypatch.setattr(
+        "system.book_manager.shutil.which",
+        lambda name: "/tmp/ebook-convert" if name == "ebook-convert-custom" else None,
+    )
+    assert BookManager._get_calibre_executable() == "/tmp/ebook-convert"
+
+
+def test_get_calibre_executable_uses_default_path(monkeypatch, tmp_path):
+    monkeypatch.delenv("CADENCE_CALIBRE_PATH", raising=False)
+    calibre = tmp_path / "ebook-convert.exe"
+    calibre.write_text("bin", encoding="utf-8")
+    monkeypatch.setattr("system.book_manager.CALIBRE_PATH", str(calibre))
+    monkeypatch.setattr("system.book_manager.shutil.which", lambda _name: None)
+    assert BookManager._get_calibre_executable() == str(calibre)
+
+
+def test_get_calibre_executable_returns_none_when_missing(monkeypatch):
+    monkeypatch.setenv("CADENCE_CALIBRE_PATH", "/missing/ebook-convert.exe")
+    monkeypatch.setattr("system.book_manager.shutil.which", lambda _name: None)
+    assert BookManager._get_calibre_executable() is None
 
 
 def test_tokenize_for_alignment_normalizes_curly_punctuation():

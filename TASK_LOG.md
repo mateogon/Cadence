@@ -10,26 +10,26 @@ Status key:
   - Commit: `cda5b61`
 
 ## Phase 1: Release and CI Consistency
-- `[ ]` Align release artifact name with PyInstaller output.
+- `[x]` Align release artifact name with PyInstaller output.
   - Update `.github/workflows/release.yml` artifact/upload paths to `dist/Cadence.exe` (or rename build output intentionally).
   - Verify release workflow paths are consistent end-to-end.
-- `[ ]` Align Python version across docs and release workflow.
+- `[x]` Align Python version across docs and release workflow.
   - Pick one target version (recommend `3.12`) and update:
     - `.github/workflows/release.yml`
     - `README.md`
     - any scripts/docs that still reference a different version.
-- `[ ]` Add a Windows CI test job.
+- `[x]` Add a Windows CI test job.
   - Add `windows-latest` matrix/job in `.github/workflows/tests.yml`.
   - Run at least unit + service + minimal UI smoke on Windows.
 
 ## Phase 2: Config and Environment Hardening
-- `[ ]` Make Calibre path configurable (no hardcoded single path).
+- `[x]` Make Calibre path configurable (no hardcoded single path).
   - Add setting/env key (e.g. `CADENCE_CALIBRE_PATH`) with fallback auto-discovery.
   - Surface helpful error message in UI when missing.
-- `[ ]` Unify default settings in one source of truth.
+- `[x]` Unify default settings in one source of truth.
   - Remove mismatches between `system/runtime_settings.py` and `BookManager` helper defaults.
   - Ensure UI dropdown defaults map exactly to runtime defaults.
-- `[ ]` Add tests for config resolution and fallback behavior.
+- `[x]` Add tests for config resolution and fallback behavior.
   - Missing/invalid Calibre path.
   - Default-resolution consistency assertions.
 
