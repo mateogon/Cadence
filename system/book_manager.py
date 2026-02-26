@@ -18,6 +18,156 @@ LIBRARY_PATH = Path("library")
 LIBRARY_PATH.mkdir(exist_ok=True)
 
 class BookManager:
+    class _ImportProgressEstimator:
+        """
+        Lightweight, thread-safe ETA estimator based on per-phase throughput.
+        Percent is computed as elapsed / (elapsed + remaining_estimate).
+        """
+
+        def __init__(self, progress_callback):
+            self._progress_callback = progress_callback
+            self._start_t = time.monotonic()
+            self._lock = threading.Lock()
+            self._phase = {}
+            self._bootstrap_eta_s = 0.0
+            self._last_emit_t = 0.0
+            self._last_emit_pct = -1.0
+
+        def set_bootstrap_eta(self, eta_seconds):
+            with self._lock:
+                self._bootstrap_eta_s = max(0.0, float(eta_seconds))
+
+        def set_phase(
+            self,
+            name,
+            total_bytes,
+            done_bytes=0.0,
+            initial_speed_bps=0.0,
+            total_units=0.0,
+            done_units=0.0,
+            initial_sec_per_unit=0.0,
+        ):
+            total = max(0.0, float(total_bytes))
+            done = max(0.0, min(total, float(done_bytes)))
+            speed = max(0.0, float(initial_speed_bps))
+            units_total = max(0.0, float(total_units))
+            units_done = max(0.0, min(units_total, float(done_units)))
+            sec_per_unit = max(0.0, float(initial_sec_per_unit))
+            now = time.monotonic()
+            with self._lock:
+                self._phase[name] = {
+                    "total": total,
+                    "done": done,
+                    "speed": speed,
+                    "units_total": units_total,
+                    "units_done": units_done,
+                    "sec_per_unit": sec_per_unit,
+                    "last_t": now,
+                    "last_done": done,
+                }
+
+        def advance(self, name, done_delta_bytes):
+            delta = max(0.0, float(done_delta_bytes))
+            now = time.monotonic()
+            with self._lock:
+                p = self._phase.get(name)
+                if not p:
+                    return
+                prev_done = p["done"]
+                p["done"] = min(p["total"], prev_done + delta)
+                done_gain = max(0.0, p["done"] - p["last_done"])
+                dt = max(0.0, now - p["last_t"])
+                if done_gain > 0.0 and dt >= 0.08:
+                    instant = done_gain / dt
+                    if p["speed"] > 0.0:
+                        p["speed"] = (0.75 * p["speed"]) + (0.25 * instant)
+                    else:
+                        p["speed"] = instant
+                    p["last_t"] = now
+                    p["last_done"] = p["done"]
+
+        def advance_with_timing(
+            self, name, done_delta_bytes, elapsed_seconds, done_delta_units=1.0
+        ):
+            delta_bytes = max(0.0, float(done_delta_bytes))
+            delta_units = max(0.0, float(done_delta_units))
+            elapsed = max(0.0, float(elapsed_seconds))
+            now = time.monotonic()
+            with self._lock:
+                p = self._phase.get(name)
+                if not p:
+                    return
+                p["done"] = min(p["total"], p["done"] + delta_bytes)
+                p["units_done"] = min(
+                    p.get("units_total", 0.0), p.get("units_done", 0.0) + delta_units
+                )
+                if elapsed > 0.0 and delta_bytes > 0.0:
+                    instant_bps = delta_bytes / elapsed
+                    if p["speed"] > 0.0:
+                        p["speed"] = (0.70 * p["speed"]) + (0.30 * instant_bps)
+                    else:
+                        p["speed"] = instant_bps
+                if elapsed > 0.0 and delta_units > 0.0:
+                    sample_spu = elapsed / delta_units
+                    prev_spu = float(p.get("sec_per_unit", 0.0))
+                    if prev_spu > 0.0:
+                        p["sec_per_unit"] = (0.70 * prev_spu) + (0.30 * sample_spu)
+                    else:
+                        p["sec_per_unit"] = sample_spu
+                p["last_t"] = now
+                p["last_done"] = p["done"]
+
+        def estimate_eta_seconds(self):
+            with self._lock:
+                remaining = 0.0
+                active = 0
+                for p in self._phase.values():
+                    rem = max(0.0, p["total"] - p["done"])
+                    if rem <= 0.0:
+                        continue
+                    active += 1
+                    speed = p["speed"] if p["speed"] > 64.0 else 64.0
+                    eta_bytes = rem / speed
+                    rem_units = max(0.0, p.get("units_total", 0.0) - p.get("units_done", 0.0))
+                    sec_per_unit = max(0.0, float(p.get("sec_per_unit", 0.0)))
+                    eta_units = rem_units * sec_per_unit if sec_per_unit > 0.0 else 0.0
+                    remaining += max(eta_bytes, eta_units)
+                if active == 0:
+                    elapsed = max(0.0, time.monotonic() - self._start_t)
+                    return max(0.0, self._bootstrap_eta_s - elapsed)
+                return remaining
+
+        def estimate_pct(self):
+            elapsed = max(0.0, time.monotonic() - self._start_t)
+            eta = self.estimate_eta_seconds()
+            denom = elapsed + eta
+            if denom <= 0.0:
+                return 0.0
+            return max(0.0, min(0.99, elapsed / denom))
+
+        @staticmethod
+        def _fmt_eta(eta_seconds):
+            secs = max(0, int(round(float(eta_seconds))))
+            mins, sec = divmod(secs, 60)
+            hrs, mins = divmod(mins, 60)
+            if hrs > 0:
+                return f"{hrs:02d}:{mins:02d}:{sec:02d}"
+            return f"{mins:02d}:{sec:02d}"
+
+        def emit(self, message, force=False, min_interval_s=0.2):
+            now = time.monotonic()
+            pct = self.estimate_pct()
+            with self._lock:
+                if not force:
+                    if (now - self._last_emit_t) < float(min_interval_s) and abs(
+                        pct - self._last_emit_pct
+                    ) < 0.002:
+                        return
+                self._last_emit_t = now
+                self._last_emit_pct = pct
+            eta = self.estimate_eta_seconds()
+            self._progress_callback(float(pct), f"{message} • ETA {self._fmt_eta(eta)}")
+
     @staticmethod
     def _get_calibre_executable():
         configured = os.getenv("CADENCE_CALIBRE_PATH", "").strip()
@@ -578,7 +728,9 @@ class BookManager:
         return {"title": title, "author": author, "cover": cover}
 
     @staticmethod
-    def _extract_chapter_texts(epub_file, content_dir, calibre_exe, is_cancelled, log):
+    def _extract_chapter_texts(
+        epub_file, content_dir, calibre_exe, is_cancelled, log, progress_estimator=None
+    ):
         temp_dir = Path("temp_extraction")
         neutral_zone = Path("temp_isolated_html")
 
@@ -648,17 +800,36 @@ class BookManager:
             max_workers = BookManager._get_extract_worker_count()
             log(f"Starting parallel extraction with {max_workers} workers...")
 
+            # Start fresh to avoid stale chapter text files from prior imports.
+            for stale_txt in content_dir.glob("ch_*.txt"):
+                try:
+                    stale_txt.unlink()
+                except Exception:
+                    pass
+            for stale_part in content_dir.glob("ch_*.part.txt"):
+                try:
+                    stale_part.unlink()
+                except Exception:
+                    pass
+            for stale_extract in content_dir.glob("extract_*.txt.tmp"):
+                try:
+                    stale_extract.unlink()
+                except Exception:
+                    pass
+
             def convert_chunk(args):
                 if is_cancelled():
                     return None
-                idx, html_path = args
-                chunk_name = f"chunk_{idx:04d}{html_path.suffix}"
+                source_idx, html_path = args
+                source_size = float(max(0, int(html_path.stat().st_size)))
+                convert_started = time.monotonic()
+                chunk_name = f"chunk_{source_idx:04d}{html_path.suffix}"
                 isolated_html = neutral_zone / chunk_name
                 shutil.copy(html_path, isolated_html)
 
-                out_txt_name = f"ch_{idx+1:03d}.txt"
-                out_txt = content_dir / out_txt_name
-                out_txt_tmp = content_dir / f"{out_txt.stem}.part.txt"
+                out_txt_name = f"ch_{source_idx+1:03d}.txt"
+                out_txt_tmp = content_dir / f"{Path(out_txt_name).stem}.part.txt"
+                staged_txt = content_dir / f"extract_{source_idx+1:03d}.txt.tmp"
 
                 log(f"Converting {html_path.name} -> {out_txt_name}")
                 cmd = [
@@ -677,9 +848,21 @@ class BookManager:
                             encoding="utf-8",
                             errors="replace",
                         )
-                        if result.returncode == 0 and out_txt_tmp.exists() and out_txt_tmp.stat().st_size > 0:
-                            os.replace(out_txt_tmp, out_txt)
-                            return idx + 1
+                        out_exists = out_txt_tmp.exists()
+                        out_size = out_txt_tmp.stat().st_size if out_exists else 0
+                        if result.returncode == 0 and out_exists and out_size > 0:
+                            os.replace(out_txt_tmp, staged_txt)
+                            if progress_estimator is not None:
+                                progress_estimator.advance_with_timing(
+                                    "extract",
+                                    source_size,
+                                    time.monotonic() - convert_started,
+                                    done_delta_units=1.0,
+                                )
+                                progress_estimator.emit(
+                                    f"Step 1/3: Extracting Text... ({source_idx + 1}/{len(non_trivial_html_files)})"
+                                )
+                            return source_idx, staged_txt
 
                         err_tail = (result.stderr or "").strip()[-600:]
                         out_tail = (result.stdout or "").strip()[-300:]
@@ -687,6 +870,11 @@ class BookManager:
                             f"Failed conversion (attempt {attempt}/2): {html_path.name} "
                             f"(rc={result.returncode})"
                         )
+                        if result.returncode == 0:
+                            if not out_exists:
+                                log("reason: converter reported success but produced no output file.")
+                            elif out_size <= 0:
+                                log("reason: converter reported success but produced empty text output.")
                         if err_tail:
                             log(f"stderr: {err_tail}")
                         if out_tail:
@@ -708,16 +896,57 @@ class BookManager:
                                 out_txt_tmp.unlink()
                             except Exception:
                                 pass
+                if progress_estimator is not None:
+                    progress_estimator.advance_with_timing(
+                        "extract",
+                        source_size,
+                        time.monotonic() - convert_started,
+                        done_delta_units=1.0,
+                    )
+                    progress_estimator.emit(
+                        f"Step 1/3: Extracting Text... ({source_idx + 1}/{len(non_trivial_html_files)})"
+                    )
                 return None
 
-            tasks = [(i, h) for i, h in enumerate(html_files) if h.stat().st_size >= 300]
+            non_trivial_html_files = [h for h in html_files if h.stat().st_size >= 300]
+            skipped_small = len(html_files) - len(non_trivial_html_files)
+            if skipped_small > 0:
+                log(f"Skipping {skipped_small} tiny HTML fragments (<300 bytes).")
+            extract_total_bytes = float(
+                sum(max(0, int(h.stat().st_size)) for h in non_trivial_html_files)
+            )
+            if progress_estimator is not None:
+                progress_estimator.set_phase(
+                    "extract",
+                    total_bytes=extract_total_bytes,
+                    done_bytes=0.0,
+                    initial_speed_bps=220_000.0,
+                    total_units=float(len(non_trivial_html_files)),
+                    done_units=0.0,
+                    initial_sec_per_unit=0.8,
+                )
+            # Keep chapter numbering contiguous for extracted text files even when
+            # source spine items are skipped/empty.
+            tasks = list(enumerate(non_trivial_html_files))
             if max_workers <= 1:
                 results = [r for r in map(convert_chunk, tasks) if r is not None]
             else:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                     results = [r for r in executor.map(convert_chunk, tasks) if r is not None]
 
-            chapter_count = len(results)
+            ordered_successes = sorted(results, key=lambda item: item[0])
+            for new_idx, (_, staged_txt) in enumerate(ordered_successes, start=1):
+                final_txt = content_dir / f"ch_{new_idx:03d}.txt"
+                try:
+                    if final_txt.exists():
+                        final_txt.unlink()
+                    os.replace(staged_txt, final_txt)
+                except Exception as exc:
+                    log(f"Failed to finalize chapter text {final_txt.name}: {exc}")
+
+            chapter_count = len(ordered_successes)
+            if chapter_count > 0:
+                log(f"Finalized chapter numbering to contiguous files: ch_001.txt .. ch_{chapter_count:03d}.txt")
             if is_cancelled():
                 log("Import canceled during text extraction.")
                 return None, None
@@ -739,8 +968,12 @@ class BookManager:
         progress_callback,
         is_cancelled,
         log,
+        progress_estimator=None,
     ):
-        progress_callback(0.4, "Step 2/3: Streaming synthesis + alignment...")
+        if progress_estimator is None:
+            progress_callback(0.4, "Step 2/3: Streaming synthesis + alignment...")
+        else:
+            progress_estimator.emit("Step 2/3: Streaming synthesis + alignment...", force=True)
         log("--- Step 2/3: Streaming Chapter Pipeline (TTS -> WhisperX) ---")
         if is_cancelled():
             log("Import canceled before synthesis/alignment.")
@@ -950,17 +1183,21 @@ class BookManager:
         for txt in txt_files:
             wav_path = audio_dir / f"{txt.stem}.wav"
             json_path = content_dir / f"{txt.stem}.json"
+            txt_bytes = max(0, int(txt.stat().st_size)) if txt.exists() else 0
             has_audio = wav_path.exists() and wav_path.stat().st_size > 0
             has_json = json_path.exists() and json_path.stat().st_size > 0
             chapters.append(
                 {
                     "stem": txt.stem,
                     "txt": txt,
+                    "txt_bytes": txt_bytes,
                     "wav": wav_path,
                     "json": json_path,
                     "has_audio": has_audio,
                     "has_json": has_json,
                     "ready": has_audio and has_json,
+                    "synth_accounted": has_audio or txt_bytes == 0,
+                    "align_accounted": has_json or txt_bytes == 0,
                 }
             )
 
@@ -973,18 +1210,82 @@ class BookManager:
         with open(book_dir / "metadata.json", "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=4)
 
+        if progress_estimator is not None:
+            synth_total = float(sum(c["txt_bytes"] for c in chapters))
+            synth_done = float(
+                sum(c["txt_bytes"] for c in chapters if c["synth_accounted"])
+            )
+            synth_total_units = float(sum(1 for c in chapters if c["txt_bytes"] > 0))
+            synth_done_units = float(
+                sum(
+                    1
+                    for c in chapters
+                    if c["txt_bytes"] > 0 and c.get("synth_accounted", False)
+                )
+            )
+            align_total = float(sum(c["txt_bytes"] for c in chapters))
+            align_done = float(
+                sum(c["txt_bytes"] for c in chapters if c["align_accounted"])
+            )
+            align_total_units = float(sum(1 for c in chapters if c["txt_bytes"] > 0))
+            align_done_units = float(
+                sum(
+                    1
+                    for c in chapters
+                    if c["txt_bytes"] > 0 and c.get("align_accounted", False)
+                )
+            )
+            progress_estimator.set_phase(
+                "synth",
+                total_bytes=synth_total,
+                done_bytes=synth_done,
+                initial_speed_bps=8_000.0,
+                total_units=synth_total_units,
+                done_units=synth_done_units,
+                initial_sec_per_unit=22.0,
+            )
+            progress_estimator.set_phase(
+                "align",
+                total_bytes=align_total,
+                done_bytes=align_done,
+                initial_speed_bps=15_000.0,
+                total_units=align_total_units,
+                done_units=align_done_units,
+                initial_sec_per_unit=45.0,
+            )
+
+        def _mark_phase_done(chapter, phase_name, chapter_key, elapsed_seconds=None):
+            if progress_estimator is None:
+                return
+            if chapter.get(chapter_key):
+                return
+            chapter[chapter_key] = True
+            delta = float(max(0, int(chapter.get("txt_bytes", 0))))
+            if elapsed_seconds is not None:
+                progress_estimator.advance_with_timing(
+                    phase_name,
+                    delta,
+                    float(elapsed_seconds),
+                    done_delta_units=1.0 if delta > 0.0 else 0.0,
+                )
+            elif delta > 0.0:
+                progress_estimator.advance(phase_name, delta)
+
         def update_stream_progress(activity="", chapter_stem=""):
-            pct = 0.4 + (0.55 * (ready_count / max(total_chapters, 1)))
-            pct = min(0.95, pct)
             detail = f"{activity} {chapter_stem}".strip()
             suffix = f" • {detail}" if detail else ""
-            progress_callback(
-                pct,
-                f"Step 2/3: Processing ({ready_count}/{total_chapters} ready){suffix}",
-            )
+            msg = f"Step 2/3: Processing ({ready_count}/{total_chapters} ready){suffix}"
+            if progress_estimator is None:
+                pct = 0.4 + (0.55 * (ready_count / max(total_chapters, 1)))
+                pct = min(0.95, pct)
+                progress_callback(pct, msg)
+            else:
+                progress_estimator.emit(msg)
 
         def mark_ready(chapter):
             nonlocal ready_count
+            _mark_phase_done(chapter, "synth", "synth_accounted")
+            _mark_phase_done(chapter, "align", "align_accounted")
             if chapter["has_audio"] and chapter["has_json"] and not chapter["ready"]:
                 chapter["ready"] = True
                 ready_count += 1
@@ -998,10 +1299,12 @@ class BookManager:
             if is_cancelled():
                 return False
             if chapter["has_json"]:
+                _mark_phase_done(chapter, "align", "align_accounted")
                 return True
             if not chapter["has_audio"]:
                 return False
 
+            align_started = time.monotonic()
             source_txt = chapter["txt"]
             out_json = chapter["json"]
             wav = chapter["wav"]
@@ -1102,6 +1405,12 @@ class BookManager:
             if out_json.exists() and out_json.stat().st_size > 0:
                 chapter["has_json"] = True
                 log(f"Saved timestamps: {out_json.name}")
+                _mark_phase_done(
+                    chapter,
+                    "align",
+                    "align_accounted",
+                    elapsed_seconds=(time.monotonic() - align_started),
+                )
                 mark_ready(chapter)
                 return True
             return False
@@ -1125,6 +1434,7 @@ class BookManager:
                         if is_cancelled():
                             log("Import canceled during synthesis.")
                             break
+                        synth_started = time.monotonic()
                         log(f"Synthesizing {chapter['txt'].name}...")
                         with open(chapter["txt"], "r", encoding="utf-8") as f:
                             text_content = f.read().strip()
@@ -1137,8 +1447,21 @@ class BookManager:
                                 )
                                 if chapter["has_audio"]:
                                     log(f"Saved audio: {chapter['wav'].name}")
+                                    _mark_phase_done(
+                                        chapter,
+                                        "synth",
+                                        "synth_accounted",
+                                        elapsed_seconds=(time.monotonic() - synth_started),
+                                    )
                         else:
                             log(f"Skipped {chapter['txt'].name} (Empty text)")
+                            _mark_phase_done(
+                                chapter,
+                                "synth",
+                                "synth_accounted",
+                                elapsed_seconds=(time.monotonic() - synth_started),
+                            )
+                            _mark_phase_done(chapter, "align", "align_accounted")
                         update_stream_progress("Synth", chapter["stem"])
                         align_one_chapter(chapter)
             else:
@@ -1156,16 +1479,17 @@ class BookManager:
                 def synthesize_task(chapter):
                     if is_cancelled():
                         return ("cancel", chapter)
+                    synth_started = time.monotonic()
                     with open(chapter["txt"], "r", encoding="utf-8") as f:
                         text_content = f.read().strip()
                     if not text_content:
-                        return ("empty", chapter)
+                        return ("empty", chapter, time.monotonic() - synth_started)
                     backend = get_thread_backend()
                     wav_data = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
                     if wav_data is None:
-                        return ("empty", chapter)
+                        return ("empty", chapter, time.monotonic() - synth_started)
                     backend.save_audio(wav_data, chapter["wav"])
-                    return ("saved", chapter)
+                    return ("saved", chapter, time.monotonic() - synth_started)
 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
                     futures = {
@@ -1180,17 +1504,30 @@ class BookManager:
                             break
                         chapter = futures[future]
                         try:
-                            status, chapter = future.result()
+                            status, chapter, synth_elapsed = future.result()
                             if status == "saved":
                                 chapter["has_audio"] = (
                                     chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
                                 )
                                 if chapter["has_audio"]:
                                     log(f"Saved audio: {chapter['wav'].name}")
+                                    _mark_phase_done(
+                                        chapter,
+                                        "synth",
+                                        "synth_accounted",
+                                        elapsed_seconds=synth_elapsed,
+                                    )
                             elif status == "cancel":
                                 pass
                             else:
                                 log(f"Skipped {chapter['txt'].name} (Empty text)")
+                                _mark_phase_done(
+                                    chapter,
+                                    "synth",
+                                    "synth_accounted",
+                                    elapsed_seconds=synth_elapsed,
+                                )
+                                _mark_phase_done(chapter, "align", "align_accounted")
                         except Exception as e:
                             log(f"Error synthesizing {chapter['txt'].name}: {e}")
                         update_stream_progress("Synth", chapter["stem"])
@@ -1261,6 +1598,15 @@ class BookManager:
             if not epub_file or not stored_epub_name:
                 return False
 
+            progress_estimator = BookManager._ImportProgressEstimator(progress_callback)
+            # Early heuristic before we have measured throughput:
+            # estimate end-to-end ETA from source size with conservative default speed.
+            bootstrap_bps = float(
+                max(1, int(os.getenv("CADENCE_IMPORT_BOOTSTRAP_BPS", "45000")))
+            )
+            source_bytes = float(max(0, int(source_file.stat().st_size)))
+            progress_estimator.set_bootstrap_eta(source_bytes / bootstrap_bps)
+
             # 1. Setup Folders & Check Resume
             extract_needed, voice = BookManager._determine_resume_state(
                 book_dir=book_dir,
@@ -1277,7 +1623,7 @@ class BookManager:
 
             # --- STEP 1: EXTRACTION (Calibre) ---
             if extract_needed:
-                progress_callback(0.1, "Step 1/3: Extracting Text...")
+                progress_estimator.emit("Step 1/3: Extracting Text...", force=True)
                 log("--- Step 1: Text Extraction ---")
                 if is_cancelled():
                     log("Import canceled during extraction setup.")
@@ -1288,6 +1634,7 @@ class BookManager:
                     calibre_exe=calibre_exe,
                     is_cancelled=is_cancelled,
                     log=log,
+                    progress_estimator=progress_estimator,
                 )
                 if chapter_count is None:
                     return False
@@ -1333,6 +1680,7 @@ class BookManager:
                 progress_callback=progress_callback,
                 is_cancelled=is_cancelled,
                 log=log,
+                progress_estimator=progress_estimator,
             ):
                 return False
 

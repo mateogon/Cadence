@@ -1,4 +1,4 @@
-from pathlib import Path
+import json
 
 import qt.main_window as mw
 
@@ -237,13 +237,11 @@ def test_open_player_page_prefers_saved_book_position(qapp, monkeypatch, tmp_pat
 
     book_path_key = str(book_dir.resolve())
     settings_file.write_text(
-        (
-            "{\n"
-            '  "reading_view_mode": "context",\n'
-            '  "book_positions": {\n'
-            f'    "{book_path_key}": 3\n'
-            "  }\n"
-            "}\n"
+        json.dumps(
+            {
+                "reading_view_mode": "context",
+                "book_positions": {book_path_key: 3},
+            }
         ),
         encoding="utf-8",
     )
@@ -287,10 +285,9 @@ def test_chapter_selection_persists_book_position(qapp, monkeypatch, tmp_path):
 
     window.player_chapter_list.setCurrentRow(1)
 
-    saved = settings_file.read_text(encoding="utf-8")
-    assert str(book_dir.resolve()) in saved
-    assert '"book_positions"' in saved
-    assert ": 2" in saved
+    saved = json.loads(settings_file.read_text(encoding="utf-8"))
+    key = str(book_dir.resolve())
+    assert int(saved.get("book_positions", {}).get(key, 0) or 0) == 2
 
     window.close()
 
