@@ -34,7 +34,7 @@ Status key:
   - Default-resolution consistency assertions.
 
 ## Phase 3: Pipeline Refactor and Reliability
-- `[-]` Split `BookManager.import_book` orchestration into focused components.
+- `[x]` Split `BookManager.import_book` orchestration into focused components.
   - Extract modules/functions for:
     - source normalization/conversion
     - book target/source artifact persistence
