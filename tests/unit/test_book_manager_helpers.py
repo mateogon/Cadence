@@ -1,5 +1,6 @@
 import sys
 import types
+import xml.etree.ElementTree as ET
 
 from system.book_manager import BookManager
 
@@ -149,7 +150,31 @@ def test_extract_chapter_texts_returns_none_on_unpack_failure(tmp_path, monkeypa
         is_cancelled=lambda: False,
         log=lambda _msg: None,
     )
-    assert out is None
+    assert out == (None, None)
+
+
+def test_extract_opf_metadata_reads_title_author_and_cover():
+    root = ET.fromstring(
+        """
+        <package>
+          <metadata>
+            <title>Example Title</title>
+            <creator>Jane Doe</creator>
+            <meta name="cover" content="cover-image-id" />
+          </metadata>
+          <manifest>
+            <item id="cover-image-id" href="images/cover.jpg" media-type="image/jpeg" />
+          </manifest>
+        </package>
+        """
+    )
+    manifest = {"cover-image-id": "images/cover.jpg"}
+
+    out = BookManager._extract_opf_metadata(root, manifest)
+
+    assert out["title"] == "Example Title"
+    assert out["author"] == "Jane Doe"
+    assert out["cover"] == "images/cover.jpg"
 
 
 def test_determine_resume_state_logs_on_bad_metadata(tmp_path):

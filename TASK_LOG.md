@@ -51,7 +51,7 @@ Status key:
   - [x] cancellation mid-alignment.
 
 ## Phase 4: Metadata and Library UX
-- `[ ]` Extract richer metadata from EPUB/OPF.
+- `[x]` Extract richer metadata from EPUB/OPF.
   - author, canonical title, cover reference.
   - preserve normalized fallback values if extraction fails.
 - `[-]` Improve library search and filtering.

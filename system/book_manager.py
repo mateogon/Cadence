@@ -486,6 +486,73 @@ class BookManager:
         return metadata
 
     @staticmethod
+    def _extract_opf_metadata(root, manifest):
+        title = ""
+        author = ""
+        cover = ""
+
+        try:
+            title_node = root.find(".//metadata/title") or root.find(".//title")
+            if title_node is not None and title_node.text:
+                title = str(title_node.text).strip()
+        except Exception:
+            title = ""
+
+        try:
+            author_nodes = root.findall(".//metadata/creator") or root.findall(".//creator")
+            authors = [str(n.text).strip() for n in author_nodes if n is not None and n.text and str(n.text).strip()]
+            if authors:
+                author = ", ".join(authors)
+        except Exception:
+            author = ""
+
+        cover_id = ""
+        try:
+            for meta_node in root.findall(".//metadata/meta"):
+                name = str(meta_node.get("name", "")).strip().lower()
+                if name == "cover":
+                    cover_id = str(meta_node.get("content", "")).strip()
+                    if cover_id:
+                        break
+        except Exception:
+            cover_id = ""
+
+        try:
+            for item in root.findall(".//manifest/item"):
+                props = str(item.get("properties", "")).strip().lower().split()
+                if "cover-image" in props:
+                    href = str(item.get("href", "")).strip()
+                    if href:
+                        cover = href
+                        break
+        except Exception:
+            pass
+
+        if not cover and cover_id and cover_id in manifest:
+            cover = str(manifest.get(cover_id, "")).strip()
+
+        if not cover:
+            for candidate in ("cover", "cover-image", "coverimg"):
+                href = str(manifest.get(candidate, "")).strip()
+                if href:
+                    cover = href
+                    break
+
+        if not cover:
+            try:
+                for ref in root.findall(".//guide/reference"):
+                    ref_type = str(ref.get("type", "")).strip().lower()
+                    if ref_type == "cover":
+                        href = str(ref.get("href", "")).strip()
+                        if href:
+                            cover = href
+                            break
+            except Exception:
+                pass
+
+        return {"title": title, "author": author, "cover": cover}
+
+    @staticmethod
     def _extract_chapter_texts(epub_file, content_dir, calibre_exe, is_cancelled, log):
         temp_dir = Path("temp_extraction")
         neutral_zone = Path("temp_isolated_html")
@@ -510,10 +577,11 @@ class BookManager:
             )
             if result.returncode != 0:
                 log(f"Calibre Error: {result.stderr}")
-                return None
+                return None, None
 
             opf_files = list(temp_dir.rglob("*.opf"))
             ordered_html_files = []
+            extracted_meta = {"title": "", "author": "", "cover": ""}
 
             if opf_files:
                 try:
@@ -529,6 +597,7 @@ class BookManager:
                     manifest = {}
                     for item in root.findall(".//manifest/item"):
                         manifest[item.get("id")] = item.get("href")
+                    extracted_meta = BookManager._extract_opf_metadata(root, manifest)
 
                     spine = [itemref.get("idref") for itemref in root.findall(".//spine/itemref")]
 
@@ -626,10 +695,10 @@ class BookManager:
             chapter_count = len(results)
             if is_cancelled():
                 log("Import canceled during text extraction.")
-                return None
+                return None, None
 
             log(f"Extraction complete. {chapter_count} chapters prepared.")
-            return chapter_count
+            return chapter_count, extracted_meta
         finally:
             for d in [temp_dir, neutral_zone]:
                 if d.exists():
@@ -1188,7 +1257,7 @@ class BookManager:
                 if is_cancelled():
                     log("Import canceled during extraction setup.")
                     return False
-                chapter_count = BookManager._extract_chapter_texts(
+                chapter_count, extracted_meta = BookManager._extract_chapter_texts(
                     epub_file=epub_file,
                     content_dir=content_dir,
                     calibre_exe=calibre_exe,
@@ -1200,14 +1269,14 @@ class BookManager:
 
                 # SAVE METADATA (EARLY)
                 metadata = {
-                    "title": book_name.replace("_", " "),
-                    "author": "Unknown",
+                    "title": str((extracted_meta or {}).get("title", "")).strip() or book_name.replace("_", " "),
+                    "author": str((extracted_meta or {}).get("author", "")).strip() or "Unknown",
                     "status": "text_only",
                     "voice": voice,
                     "chapters": chapter_count,
                     "total_chapters": chapter_count,
                     "last_chapter": 0,
-                    "cover": "",
+                    "cover": str((extracted_meta or {}).get("cover", "")).strip(),
                     "source_epub": str(Path("source") / stored_epub_name),
                 }
                 with open(book_dir / "metadata.json", "w") as f:

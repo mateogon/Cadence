@@ -159,3 +159,37 @@ def test_import_book_resume_with_ready_artifacts_finishes_complete(tmp_path, mon
     assert updated["last_chapter"] == 1
     assert updated["voice"] == "M3"
     assert any("Resuming import for" in line for line in logs)
+
+
+def test_import_book_uses_extracted_opf_metadata(tmp_path, monkeypatch):
+    monkeypatch.setattr(bm, "LIBRARY_PATH", tmp_path / "library")
+    bm.LIBRARY_PATH.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: "ebook-convert"))
+    monkeypatch.setattr(
+        bm.BookManager,
+        "_extract_chapter_texts",
+        staticmethod(lambda **kwargs: (2, {"title": "Canonical Title", "author": "Author X", "cover": "cover.jpg"})),
+    )
+    monkeypatch.setattr(bm.BookManager, "_run_streaming_pipeline", staticmethod(lambda **kwargs: True))
+    monkeypatch.setattr(
+        bm.BookManager,
+        "_finalize_metadata",
+        staticmethod(lambda book_dir, content_dir, audio_dir, metadata: metadata),
+    )
+
+    source = tmp_path / "demo.epub"
+    source.write_text("epub-bytes", encoding="utf-8")
+
+    events, progress = _progress_collector()
+    ok = bm.BookManager.import_book(
+        str(source),
+        "M3",
+        progress,
+    )
+
+    assert ok is True
+    book_dir = bm.LIBRARY_PATH / "demo"
+    saved = json.loads((book_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert saved["title"] == "Canonical Title"
+    assert saved["author"] == "Author X"
+    assert saved["cover"] == "cover.jpg"
