@@ -412,6 +412,46 @@ class BookManager:
         return stored_epub
 
     @staticmethod
+    def _write_full_book_text(source_dir, content_dir, stored_epub_name, log=None):
+        txt_files = sorted(content_dir.glob("ch_*.txt"))
+        if not txt_files:
+            return ""
+
+        full_name = f"{Path(stored_epub_name).stem}.full.txt"
+        out_path = source_dir / full_name
+        tmp_path = out_path.with_suffix(out_path.suffix + ".tmp")
+
+        try:
+            chunks = []
+            for txt in txt_files:
+                try:
+                    text = txt.read_text(encoding="utf-8", errors="replace").strip()
+                except Exception as exc:
+                    if log:
+                        log(f"Warning: failed reading chapter for full-text export ({txt.name}): {exc}")
+                    continue
+                if text:
+                    chunks.append(text)
+            if not chunks:
+                return ""
+
+            tmp_path.write_text("\n\n".join(chunks).strip() + "\n", encoding="utf-8")
+            if not tmp_path.exists() or tmp_path.stat().st_size <= 0:
+                raise RuntimeError(f"Temporary full-text write failed: {tmp_path}")
+            os.replace(tmp_path, out_path)
+            return str(out_path)
+        except Exception as exc:
+            if log:
+                log(f"Warning: failed to write full-book text export: {exc}")
+            return ""
+        finally:
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except Exception:
+                pass
+
+    @staticmethod
     def _determine_resume_state(book_dir, voice, log):
         """
         Determine whether extraction is needed and whether prior metadata overrides
@@ -1273,6 +1313,14 @@ class BookManager:
                 with open(book_dir / "metadata.json", "r") as f:
                     metadata = json.load(f)
                 metadata["source_epub"] = str(Path("source") / stored_epub_name)
+
+            # Export a silent full-book text artifact alongside the stored source EPUB.
+            BookManager._write_full_book_text(
+                source_dir=source_dir,
+                content_dir=content_dir,
+                stored_epub_name=stored_epub_name,
+                log=log,
+            )
 
             # --- STEP 2/3: STREAMING SYNTH + ALIGN ---
             audio_dir = book_dir / "audio"

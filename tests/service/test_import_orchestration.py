@@ -193,3 +193,46 @@ def test_import_book_uses_extracted_opf_metadata(tmp_path, monkeypatch):
     assert saved["title"] == "Canonical Title"
     assert saved["author"] == "Author X"
     assert saved["cover"] == "cover.jpg"
+
+
+def test_import_book_writes_full_text_export_next_to_source(tmp_path, monkeypatch):
+    monkeypatch.setattr(bm, "LIBRARY_PATH", tmp_path / "library")
+    bm.LIBRARY_PATH.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: "ebook-convert"))
+    monkeypatch.setattr(
+        bm.BookManager,
+        "_extract_chapter_texts",
+        staticmethod(lambda **kwargs: (2, {"title": "Demo", "author": "A", "cover": ""})),
+    )
+    monkeypatch.setattr(bm.BookManager, "_run_streaming_pipeline", staticmethod(lambda **kwargs: True))
+    monkeypatch.setattr(
+        bm.BookManager,
+        "_finalize_metadata",
+        staticmethod(lambda book_dir, content_dir, audio_dir, metadata: metadata),
+    )
+
+    source = tmp_path / "demo.epub"
+    source.write_text("epub-bytes", encoding="utf-8")
+
+    original_write_full = bm.BookManager._write_full_book_text
+
+    def _seed_chapters(*, source_dir, content_dir, stored_epub_name, log=None):
+        (content_dir / "ch_001.txt").write_text("Chapter one text.", encoding="utf-8")
+        (content_dir / "ch_002.txt").write_text("Chapter two text.", encoding="utf-8")
+        return original_write_full(source_dir, content_dir, stored_epub_name, log=log)
+
+    monkeypatch.setattr(bm.BookManager, "_write_full_book_text", staticmethod(_seed_chapters))
+
+    events, progress = _progress_collector()
+    ok = bm.BookManager.import_book(
+        str(source),
+        "M3",
+        progress,
+    )
+
+    assert ok is True
+    full_txt = bm.LIBRARY_PATH / "demo" / "source" / "demo.full.txt"
+    assert full_txt.exists()
+    body = full_txt.read_text(encoding="utf-8")
+    assert "Chapter one text." in body
+    assert "Chapter two text." in body
