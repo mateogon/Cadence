@@ -41,7 +41,7 @@ Status key:
     - text extraction
     - synthesis + alignment streaming phase
     - metadata finalization
-- `[-]` Replace broad silent exceptions with structured error handling.
+- `[x]` Replace broad silent exceptions with structured error handling.
   - Keep app resilient, but always log actionable context.
   - Avoid `except Exception: pass` unless explicitly justified.
 - `[x]` Add cancellation/timeout reliability tests.

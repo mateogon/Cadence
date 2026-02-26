@@ -77,7 +77,8 @@ class BookManager:
         if meta_path.exists():
             try:
                 metadata = json.loads(meta_path.read_text(encoding="utf-8"))
-            except Exception:
+            except Exception as exc:
+                print(f"Warning: failed to parse metadata for stored source lookup '{meta_path}': {exc}")
                 metadata = {}
         epub_path = BookManager._resolve_stored_epub(book_dir, metadata=metadata)
         return str(epub_path) if epub_path else ""
@@ -379,8 +380,8 @@ class BookManager:
                 and resolved.parent.parent.parent.resolve() == LIBRARY_PATH.resolve()
             ):
                 book_dir = resolved.parent.parent
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"Warning: failed to resolve source path '{source_file}': {exc}")
 
         if book_dir is None:
             book_name = source_file.stem.replace(" ", "_")
@@ -490,43 +491,30 @@ class BookManager:
         title = ""
         author = ""
         cover = ""
+        title_node = root.find(".//metadata/title") or root.find(".//title")
+        if title_node is not None and title_node.text:
+            title = str(title_node.text).strip()
 
-        try:
-            title_node = root.find(".//metadata/title") or root.find(".//title")
-            if title_node is not None and title_node.text:
-                title = str(title_node.text).strip()
-        except Exception:
-            title = ""
-
-        try:
-            author_nodes = root.findall(".//metadata/creator") or root.findall(".//creator")
-            authors = [str(n.text).strip() for n in author_nodes if n is not None and n.text and str(n.text).strip()]
-            if authors:
-                author = ", ".join(authors)
-        except Exception:
-            author = ""
+        author_nodes = root.findall(".//metadata/creator") or root.findall(".//creator")
+        authors = [str(n.text).strip() for n in author_nodes if n is not None and n.text and str(n.text).strip()]
+        if authors:
+            author = ", ".join(authors)
 
         cover_id = ""
-        try:
-            for meta_node in root.findall(".//metadata/meta"):
-                name = str(meta_node.get("name", "")).strip().lower()
-                if name == "cover":
-                    cover_id = str(meta_node.get("content", "")).strip()
-                    if cover_id:
-                        break
-        except Exception:
-            cover_id = ""
+        for meta_node in root.findall(".//metadata/meta"):
+            name = str(meta_node.get("name", "")).strip().lower()
+            if name == "cover":
+                cover_id = str(meta_node.get("content", "")).strip()
+                if cover_id:
+                    break
 
-        try:
-            for item in root.findall(".//manifest/item"):
-                props = str(item.get("properties", "")).strip().lower().split()
-                if "cover-image" in props:
-                    href = str(item.get("href", "")).strip()
-                    if href:
-                        cover = href
-                        break
-        except Exception:
-            pass
+        for item in root.findall(".//manifest/item"):
+            props = str(item.get("properties", "")).strip().lower().split()
+            if "cover-image" in props:
+                href = str(item.get("href", "")).strip()
+                if href:
+                    cover = href
+                    break
 
         if not cover and cover_id and cover_id in manifest:
             cover = str(manifest.get(cover_id, "")).strip()
@@ -539,16 +527,13 @@ class BookManager:
                     break
 
         if not cover:
-            try:
-                for ref in root.findall(".//guide/reference"):
-                    ref_type = str(ref.get("type", "")).strip().lower()
-                    if ref_type == "cover":
-                        href = str(ref.get("href", "")).strip()
-                        if href:
-                            cover = href
-                            break
-            except Exception:
-                pass
+            for ref in root.findall(".//guide/reference"):
+                ref_type = str(ref.get("type", "")).strip().lower()
+                if ref_type == "cover":
+                    href = str(ref.get("href", "")).strip()
+                    if href:
+                        cover = href
+                        break
 
         return {"title": title, "author": author, "cover": cover}
 
