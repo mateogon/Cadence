@@ -429,6 +429,7 @@ PLAYER_DEFAULTS = {
     "playback_speed": 1.0,
     "sync_offset": 0.0,
     "book_positions": {},
+    "book_positions_ms": {},
 }
 
 
@@ -893,6 +894,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._player_source_audio = None
         self._player_playback_audio = None
         self._player_playback_speed = 1.0
+        self._player_active_stem = ""
+        self._last_resume_save_t = 0.0
+        self._last_resume_saved_pos_ms = -1
         self._audio_backend = "pygame" if pygame is not None else "qt"
         self._qt_media_available = False
         self.media_audio = None
@@ -1967,6 +1971,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refresh_library()
 
     def open_player_page(self, book: dict):
+        self._persist_current_chapter_position(force=True)
         self._active_book = dict(book)
         self._set_player_title(book.get("title", "Book"))
         self.player_progress.setValue(0)
@@ -2050,6 +2055,88 @@ class MainWindow(QtWidgets.QMainWindow):
         self._player_settings["book_positions"] = positions
         self._save_player_settings()
 
+    def _get_book_resume_position_ms(self, book: dict, stem: str):
+        key = self._book_resume_key(book)
+        if not key or not stem:
+            return 0
+        positions = self._player_settings.get("book_positions_ms", {})
+        if not isinstance(positions, dict):
+            return 0
+        chapter_positions = positions.get(key, {})
+        if not isinstance(chapter_positions, dict):
+            return 0
+        try:
+            value = int(chapter_positions.get(stem, 0) or 0)
+        except Exception:
+            return 0
+        return max(0, value)
+
+    def _save_book_resume_position_ms(self, stem: str, pos_ms: int, force: bool = False):
+        if not self._active_book or not stem:
+            return
+        key = self._book_resume_key(self._active_book)
+        if not key:
+            return
+        pos_ms = int(max(0, pos_ms))
+        now = time.monotonic()
+        if not force and self._last_resume_saved_pos_ms >= 0:
+            if abs(pos_ms - self._last_resume_saved_pos_ms) < 1000 and (now - self._last_resume_save_t) < 1.0:
+                return
+
+        positions = self._player_settings.get("book_positions_ms")
+        if not isinstance(positions, dict):
+            positions = {}
+        chapter_positions = positions.get(key)
+        if not isinstance(chapter_positions, dict):
+            chapter_positions = {}
+        if not force and int(chapter_positions.get(stem, 0) or 0) == pos_ms:
+            return
+        chapter_positions[stem] = pos_ms
+        positions[key] = chapter_positions
+        self._player_settings["book_positions_ms"] = positions
+        self._last_resume_save_t = now
+        self._last_resume_saved_pos_ms = pos_ms
+        self._save_player_settings()
+
+    def _current_playback_pos_ms(self):
+        if self._audio_backend == "pygame":
+            return int(max(0, self._pygame_current_pos_ms()))
+        if self.media_player is not None:
+            try:
+                return int(max(0, self.media_player.position()))
+            except Exception:
+                pass
+        return int(max(0, self._qt_last_pos_ms))
+
+    def _persist_current_chapter_position(self, force: bool = False):
+        stem = str(getattr(self, "_player_active_stem", "") or "").strip()
+        if not stem:
+            return
+        pos_ms = self._current_playback_pos_ms()
+        self._save_book_resume_position_ms(stem, pos_ms, force=force)
+
+    def _restore_chapter_position(self, stem: str):
+        if not stem:
+            return
+        target = self._get_book_resume_position_ms(self._active_book, stem)
+        if target <= 0:
+            return
+        target = int(max(0, min(max(1, self._player_duration_ms), target)))
+        if self._audio_backend == "pygame":
+            self._pygame_pos_offset_ms = target
+            self._pygame_last_pos_ms = target
+        elif self.media_player is not None:
+            try:
+                self.media_player.setPosition(target)
+            except Exception:
+                pass
+            self._qt_last_pos_ms = target
+        slider_value = int((float(target) / float(max(1, self._player_duration_ms))) * 1000.0)
+        self.player_progress.setValue(slider_value)
+        self.player_seek.setValue(slider_value)
+        self._update_time_labels(target, self._player_duration_ms)
+        self._update_word_highlight(float(target) / 1000.0 + float(self._player_settings.get("sync_offset", 0.0)))
+
     def _set_player_title(self, title: str):
         self._player_title_full = str(title or "Book")
         self.player_title.setToolTip(self._player_title_full)
@@ -2073,6 +2160,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_player_chapter_selected(self, row: int):
         if row < 0 or not self._active_book:
             return
+        self._persist_current_chapter_position(force=True)
         self._pause_all_audio()
         self._pygame_pos_offset_ms = 0
         self._pygame_last_pos_ms = 0
@@ -2110,7 +2198,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.player_play_btn.setEnabled(True)
             self.player_seek.setEnabled(True)
             self._update_time_labels(0, self._player_duration_ms)
+            self._player_active_stem = str(stem)
+            self._restore_chapter_position(self._player_active_stem)
         else:
+            self._player_active_stem = str(stem)
             self._player_source_audio = None
             self._player_playback_audio = None
             if self.media_player is not None:
@@ -2294,6 +2385,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._player_seek_dragging = False
         self._player_seek_was_playing = False
         self._player_scrub_target_ms = 0
+        self._persist_current_chapter_position(force=True)
 
     def _on_seek_changed(self, value: int):
         if self._player_duration_ms <= 0:
@@ -2340,6 +2432,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.player_seek.setValue(value)
         self._update_time_labels(pos_ms, self._player_duration_ms)
         self._update_word_highlight(float(pos_ms) / 1000.0 + float(self._player_settings.get("sync_offset", 0.0)))
+        self._persist_current_chapter_position(force=False)
 
     def _update_time_labels(self, pos_ms: int, dur_ms: int):
         self.player_time_meta.setText(
@@ -2490,6 +2583,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._pygame_pos_offset_ms = current
         self._pygame_last_pos_ms = current
         self.player_play_btn.setText("Play")
+        self._persist_current_chapter_position(force=True)
 
     def _pygame_current_pos_ms(self):
         if pygame is None or not self._pygame_ready:
@@ -2503,6 +2597,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return current
 
     def _pause_all_audio(self):
+        self._persist_current_chapter_position(force=True)
         if self.media_player is not None:
             try:
                 self.media_player.pause()
@@ -2553,6 +2648,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.player_seek.setValue(value)
         self._update_time_labels(pos_ms, self._player_duration_ms)
         self._update_word_highlight(float(pos_ms) / 1000.0 + float(self._player_settings.get("sync_offset", 0.0)))
+        self._persist_current_chapter_position(force=False)
 
         if not busy:
             self.player_play_btn.setText("Play")
@@ -2628,6 +2724,26 @@ class MainWindow(QtWidgets.QMainWindow):
                     continue
                 normalized[str(key)] = chapter_num
             data["book_positions"] = normalized
+        pos_ms = data.get("book_positions_ms")
+        if not isinstance(pos_ms, dict):
+            data["book_positions_ms"] = {}
+        else:
+            normalized_ms = {}
+            for key, value in pos_ms.items():
+                if not isinstance(value, dict):
+                    continue
+                row = {}
+                for stem, ms in value.items():
+                    try:
+                        v = int(ms)
+                    except Exception:
+                        continue
+                    if v < 0:
+                        continue
+                    row[str(stem)] = v
+                if row:
+                    normalized_ms[str(key)] = row
+            data["book_positions_ms"] = normalized_ms
         return data
 
     def _normalized_hex(self, raw: str, default_hex: str) -> str:

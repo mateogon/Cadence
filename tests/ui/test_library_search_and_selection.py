@@ -293,3 +293,47 @@ def test_chapter_selection_persists_book_position(qapp, monkeypatch, tmp_path):
     assert ": 2" in saved
 
     window.close()
+
+
+def test_save_and_get_book_resume_position_ms(qapp, monkeypatch, tmp_path):
+    settings_file = tmp_path / "player_settings.json"
+    monkeypatch.setattr(mw, "PLAYER_SETTINGS_FILE", settings_file)
+    window = _build_window(monkeypatch, books=[])
+
+    book_dir = tmp_path / "Book"
+    book_dir.mkdir()
+    book = {"title": "Book", "path": str(book_dir)}
+    window._active_book = dict(book)
+
+    window._save_book_resume_position_ms("ch_001", 4567, force=True)
+    value = window._get_book_resume_position_ms(book, "ch_001")
+
+    assert value == 4567
+    saved = settings_file.read_text(encoding="utf-8")
+    assert '"book_positions_ms"' in saved
+    assert "4567" in saved
+
+    window.close()
+
+
+def test_restore_chapter_position_updates_seek_and_offsets(qapp, monkeypatch, tmp_path):
+    settings_file = tmp_path / "player_settings.json"
+    monkeypatch.setattr(mw, "PLAYER_SETTINGS_FILE", settings_file)
+    window = _build_window(monkeypatch, books=[])
+
+    book_dir = tmp_path / "Book"
+    book_dir.mkdir()
+    book = {"title": "Book", "path": str(book_dir)}
+    window._active_book = dict(book)
+    key = str(book_dir.resolve())
+    window._player_settings["book_positions_ms"] = {key: {"ch_001": 2500}}
+    window._audio_backend = "pygame"
+    window._player_duration_ms = 10000
+
+    window._restore_chapter_position("ch_001")
+
+    assert window._pygame_last_pos_ms == 2500
+    assert window.player_seek.value() == 250
+    assert window.player_time_meta.text().startswith("00:02")
+
+    window.close()
