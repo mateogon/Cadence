@@ -1,3 +1,99 @@
+[project]
+name = "cadence-reader"
+version = "0.1.0"
+description = "Local audiobook synthesis and word-synced reading"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "PyQt6==6.6.1",
+    "PyQt6-Qt6==6.6.3",
+    "pygame",
+    "soundfile",
+    "numpy==1.26.4",
+    "sympy==1.13.1",
+    "supertonic==1.3.1",
+    "watchfiles",
+    "librosa",
+    "whisperx==3.3.1",
+    # CTranslate2 4.4 imports pkg_resources to load Windows DLLs; setuptools 82 removed it.
+    "setuptools<82; sys_platform == 'win32'",
+    # WhisperX needs matching Torch/Torchaudio binaries; 2.6 supports the scoped safe VAD loader.
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "onnxruntime-gpu==1.24.1; sys_platform == 'linux' or sys_platform == 'win32'",
+    "torch==2.6.0; sys_platform == 'linux' or sys_platform == 'win32'",
+    "torchaudio==2.6.0; sys_platform == 'linux' or sys_platform == 'win32'",
+]
+
+[dependency-groups]
+build = ["pyinstaller"]
+cpu = ["onnxruntime==1.24.1", "torch==2.6.0", "torchaudio==2.6.0"]
+dev = ["ruff", "mypy", "pytest", "pytest-mock", "pytest-qt", "pre-commit"]
+
+[tool.uv]
+package = false
+default-groups = ["cpu", "dev"]
+conflicts = [[{ group = "cpu" }, { extra = "gpu" }]]
+environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", group = "cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { index = "pytorch-cu124", extra = "gpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchaudio = [
+    { index = "pytorch-cpu", group = "cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { index = "pytorch-cu124", extra = "gpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+# Both wheels import the same onnxruntime API. The mutually exclusive profiles own its provider.
+# Preserve upstream metadata except the CPU-only distribution requirement, including its extras.
+[[tool.uv.dependency-metadata]]
+name = "supertonic"
+version = "1.3.1"
+requires-python = ">=3.9"
+requires-dist = [
+    "numpy>=1.21.0", "soundfile>=0.10.0", "huggingface-hub>=0.10.0",
+    "sounddevice>=0.4.0; extra == 'playback'",
+    "fastapi>=0.110; extra == 'serve'", "uvicorn[standard]>=0.27; extra == 'serve'",
+    "pydantic>=2.5; extra == 'serve'", "python-multipart>=0.0.9; extra == 'serve'",
+    "pytest>=7.0; extra == 'dev'", "pytest-cov>=4.1.0; extra == 'dev'",
+    "black>=25.0; extra == 'dev'", "ruff>=0.5; extra == 'dev'",
+    "build>=1.0.0; extra == 'dev'", "twine>=4.0.0; extra == 'dev'",
+    "httpx>=0.27; extra == 'dev'",
+]
+provides-extra = ["playback", "serve", "dev"]
+
+[[tool.uv.dependency-metadata]]
+name = "faster-whisper"
+version = "1.1.0"
+requires-python = ">=3.8"
+requires-dist = [
+    "ctranslate2>=4.0,<5", "huggingface-hub>=0.13", "tokenizers>=0.13,<1",
+    "av>=11", "tqdm", "transformers[torch]>=4.23; extra == 'conversion'",
+    "black==23.*; extra == 'dev'", "flake8==6.*; extra == 'dev'",
+    "isort==5.*; extra == 'dev'", "pytest==7.*; extra == 'dev'",
+]
+provides-extra = ["conversion", "dev"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100

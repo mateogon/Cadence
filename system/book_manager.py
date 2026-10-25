@@ -14,6 +14,7 @@ from pathlib import Path
 # Default Calibre CLI location on Windows. A custom path can be supplied via
 # CADENCE_CALIBRE_PATH (absolute path or command name).
 CALIBRE_PATH = r"C:\Program Files\Calibre2\ebook-convert.exe"
+MAC_CALIBRE_PATH = "/Applications/calibre.app/Contents/MacOS/ebook-convert"
 LIBRARY_PATH = Path("library")
 LIBRARY_PATH.mkdir(exist_ok=True)
 
@@ -180,13 +181,12 @@ class BookManager:
             resolved = shutil.which(configured)
             return resolved if resolved else None
 
-        default_path = Path(CALIBRE_PATH)
-        if default_path.exists():
-            return str(default_path)
-
         resolved = shutil.which("ebook-convert")
         if resolved:
             return resolved
+        for candidate in (MAC_CALIBRE_PATH, CALIBRE_PATH):
+            if Path(candidate).exists():
+                return str(candidate)
         return None
 
     @staticmethod
@@ -320,16 +320,18 @@ class BookManager:
         env_value = os.getenv("CADENCE_WHISPERX_PYTHON", "").strip()
         if env_value:
             return env_value
-        # Prefer project-local venv Python so alignment does not accidentally run
-        # in conda base/system Python.
         project_root = Path(__file__).resolve().parent.parent
-        if os.name == "nt":
-            candidate = project_root / "venv" / "Scripts" / "python.exe"
-        else:
-            candidate = project_root / "venv" / "bin" / "python"
-        if candidate.exists():
-            return str(candidate)
-        return sys.executable
+        interpreter = ("Scripts", "python.exe") if os.name == "nt" else ("bin", "python")
+        candidates = [sys.executable] + [
+            project_root / environment / Path(*interpreter)
+            for environment in (".venv", "venv")
+        ]
+        for candidate in candidates:
+            if candidate and Path(candidate).is_file():
+                return str(candidate)
+        raise FileNotFoundError(
+            "No Python interpreter found for WhisperX. Set CADENCE_WHISPERX_PYTHON."
+        )
 
     @staticmethod
     def get_books():
@@ -657,6 +659,8 @@ class BookManager:
             for txt in final_txt
             if (content_dir / f"{txt.stem}.json").exists()
             and (content_dir / f"{txt.stem}.json").stat().st_size > 0
+            and (audio_dir / f"{txt.stem}.wav").exists()
+            and (audio_dir / f"{txt.stem}.wav").stat().st_size > 0
         )
 
         if total_chapters > 0 and aligned_ready == total_chapters:
@@ -678,23 +682,22 @@ class BookManager:
 
     @staticmethod
     def _extract_opf_metadata(root, manifest):
-        title = ""
-        author = ""
-        cover = ""
-        language = ""
-        language_node = root.find(".//metadata/language")
-        if language_node is None:
-            language_node = root.find(".//metadata/{http://purl.org/dc/elements/1.1/}language")
-        if language_node is not None and language_node.text:
-            language = str(language_node.text).strip()
-        title_node = root.find(".//metadata/title") or root.find(".//title")
-        if title_node is not None and title_node.text:
-            title = str(title_node.text).strip()
+        def metadata_values(field):
+            metadata_node = root.find(".//{*}metadata")
+            if metadata_node is None:
+                metadata_node = root
+            return [
+                node.text.strip()
+                for node in metadata_node.findall(f".//{{*}}{field}")
+                if node is not None and node.text and node.text.strip()
+            ]
 
-        author_nodes = root.findall(".//metadata/creator") or root.findall(".//creator")
-        authors = [str(n.text).strip() for n in author_nodes if n is not None and n.text and str(n.text).strip()]
-        if authors:
-            author = ", ".join(authors)
+        titles = metadata_values("title")
+        languages = metadata_values("language")
+        title = titles[0] if titles else ""
+        author = ", ".join(metadata_values("creator"))
+        language = languages[0] if languages else ""
+        cover = ""
 
         cover_id = ""
         for meta_node in root.findall(".//metadata/meta"):
@@ -1722,13 +1725,22 @@ class BookManager:
 
             # --- FINALIZE METADATA ---
             log("Finalizing metadata...")
-            BookManager._finalize_metadata(
+            metadata = BookManager._finalize_metadata(
                 book_dir=book_dir,
                 content_dir=content_dir,
                 audio_dir=audio_dir,
                 metadata=metadata,
             )
                 
+            if metadata["status"] != "complete":
+                message = (
+                    f"Import failed: only {metadata['last_chapter']}/{metadata['total_chapters']} "
+                    "chapters have audio and alignment. Check the import log and resume."
+                )
+                log(message)
+                progress_callback(0.0, message)
+                return False
+
             progress_callback(1.0, "Ready!")
             log("Import process completed successfully.")
             return True

@@ -23,6 +23,7 @@ Cadence is an immersive reading pipeline: **book file -> chapter text -> audiobo
   - If `.wav` is missing, Cadence synthesizes first, then aligns.
   - If `.wav` and `.json` both exist, Cadence skips that chapter.
 - This makes resume robust after interruptions and enables immediate reading while import is still running.
+- Import reports success only when every chapter has non-empty audio and alignment. Failed chapters remain available for resume and the reader shows the import as incomplete.
 - Library cards update live with ready counts (`Audio x/y`, `Alignment x/y`) during import.
 - EPUB `dc:language` is saved in `metadata.json` and passed to Supertonic. Regional tags such as `es-CL` use their base code; missing or unsupported codes use `na`.
 - New books store `tts_backend` and `tts_model`. Resume uses the book's stored voice and model even if the current settings change.
@@ -41,44 +42,102 @@ Cadence processes books one chapter at a time, not as one long batch.
 ![Context View](docs/media/context.gif)
 
 ## Requirements
-- Windows 10/11
-- Python 3.12
-- Calibre (`ebook-convert.exe`) installed at:
-  - `C:\Program Files\Calibre2\ebook-convert.exe`
-- FFmpeg (`ffmpeg.exe`) available in `PATH` (required for Qt player speed control)
-- NVIDIA GPU recommended for faster TTS/ASR
+- Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+- Apple Silicon macOS, Windows 10/11 x64, or Linux x64.
+- [Calibre](https://calibre-ebook.com/download) for importing books.
+- FFmpeg in `PATH` for playback speed control and WhisperX.
+- An NVIDIA GPU is optional on Windows/Linux. The default install uses CPU wheels.
 
 ## Install
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
+### macOS (Apple Silicon)
+1. Install FFmpeg with Homebrew:
+   ```bash
+   brew install ffmpeg
+   ```
+2. Install the [Calibre app](https://calibre-ebook.com/download_osx) in `/Applications`.
+3. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if needed.
+4. Install Cadence from the repository root:
+   ```bash
+   uv sync --locked
+   ```
+5. Start Cadence:
+   ```bash
+   uv run main.py
+   ```
+
+### Windows
+1. Install Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+2. Install [Calibre](https://calibre-ebook.com/download_windows) at its default location, or set `CADENCE_CALIBRE_PATH`.
+3. Install FFmpeg and add its directory to `PATH`.
+4. Install Cadence from the repository root:
+   ```powershell
+   uv sync --locked
+   ```
+5. Start Cadence:
+   ```powershell
+   uv run main.py
+   ```
+
+### Linux
+1. Install Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+2. Install Calibre, FFmpeg, and the Qt system libraries for your distribution. On Ubuntu:
+   ```bash
+   sudo apt-get install calibre ffmpeg libegl1 libgl1 libpulse0 libxkbcommon-x11-0 libxcb-cursor0
+   ```
+3. Install Cadence from the repository root:
+   ```bash
+   uv sync --locked
+   ```
+4. Start Cadence:
+   ```bash
+   uv run main.py
+   ```
+
+### Runtime profiles
+`uv sync --locked` creates `.venv` with CPU ONNX Runtime and matching Torch/Torchaudio 2.6.0.
+It also installs the development tools. Existing `venv` directories are kept.
+
+For NVIDIA GPUs on Windows/Linux, install and run the GPU profile:
+```bash
+uv sync --locked --no-group cpu --extra gpu
+uv run --no-group cpu --extra gpu main.py
 ```
+This selects ONNX Runtime GPU 1.24.1 and the official CUDA 12.4 Torch/Torchaudio wheels.
+The machine also needs compatible NVIDIA drivers and ONNX Runtime's [CUDA/cuDNN runtime libraries](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements).
+Use the same profile flags for each `uv run`; a plain `uv run` restores the default CPU profile.
+The `cpu` group and `gpu` extra conflict, so uv rejects a request for both.
+The GPU extra is for Windows/Linux; use the default profile on macOS.
 
-Install one runtime profile (fresh venv recommended):
+The lockfile uses version-specific [uv metadata overrides](https://docs.astral.sh/uv/concepts/resolution/#dependency-metadata)
+for Supertonic 1.3.1 and faster-whisper 1.1.0. Each package requests the CPU `onnxruntime`
+distribution upstream, although both ONNX distributions expose the same API. The overrides
+remove only that requirement. Cadence's selected profile supplies exactly one runtime.
+Use uv for installation; plain pip does not apply these overrides.
 
-GPU profile (default):
+Supertonic uses CPU by default on macOS. Measurements on an Apple M3 Pro used a
+71-word Spanish chapter (M3 voice, 8 steps, speed 1.05, seed 42; 26.54 seconds of audio).
+CPU synthesis took
+7.33–8.38 seconds over three runs (median 7.58). CoreML took 36.00 seconds on its
+first synthesis; its second had not finished after 140 seconds and was stopped.
+Model loading took 0.74 seconds for CPU and 10.66 seconds for CoreML.
+These measurements apply to this chapter and machine. To try CoreML when available,
+set `CADENCE_USE_COREML=1` before starting Cadence; `CADENCE_FORCE_CPU=1` takes priority.
+
+WhisperX uses CPU with `int8` when CUDA is unavailable. Faster-whisper has no MPS backend.
+Cadence verifies the bundled VAD checkpoint hash and temporarily permits its known metadata classes during loading. Torch keeps `weights_only` loading enabled; no local wrapper is needed. External WhisperX environments must provide the pinned compatible dependencies and Torch 2.6 or newer.
+
+Calibre lookup uses `CADENCE_CALIBRE_PATH`, then `PATH`, the macOS app path, and the Windows default. An invalid explicit override fails instead of silently selecting another installation. Alignment uses `CADENCE_WHISPERX_PYTHON` first, then the running interpreter (`sys.executable`), `.venv`, and `venv`.
+To keep a separate WhisperX environment, set its interpreter before starting Cadence:
 ```powershell
-pip install -r requirements-gpu.txt
+$env:CADENCE_WHISPERX_PYTHON="C:\path\to\venv_whisperx\Scripts\python.exe"
 ```
-
-CPU profile:
-```powershell
-pip install -r requirements-cpu.txt
-```
-
-Backward-compatible default (`requirements.txt`) points to GPU profile.
-Do not install both CPU and GPU ONNX Runtime packages in the same environment.
-
-If you use a separate WhisperX venv, point Cadence to it:
-```powershell
-$env:CADENCE_WHISPERX_PYTHON="C:\Users\mateo\Desktop\Cadence\venv_whisperx\Scripts\python.exe"
+```bash
+export CADENCE_WHISPERX_PYTHON="/path/to/venv_whisperx/bin/python"
 ```
 
 ## Run
-```powershell
-.\venv\Scripts\Activate.ps1
-python main.py
+```bash
+uv run main.py
 ```
 
 ## Configuration

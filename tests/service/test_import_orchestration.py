@@ -180,7 +180,7 @@ def test_import_book_uses_extracted_opf_metadata(tmp_path, monkeypatch, stored_m
     monkeypatch.setattr(
         bm.BookManager,
         "_finalize_metadata",
-        staticmethod(lambda book_dir, content_dir, audio_dir, metadata: metadata),
+        staticmethod(lambda book_dir, content_dir, audio_dir, metadata: dict(metadata, status="complete")),
     )
 
     source = tmp_path / "demo.epub"
@@ -224,7 +224,7 @@ def test_import_book_writes_full_text_export_next_to_source(tmp_path, monkeypatc
     monkeypatch.setattr(
         bm.BookManager,
         "_finalize_metadata",
-        staticmethod(lambda book_dir, content_dir, audio_dir, metadata: metadata),
+        staticmethod(lambda book_dir, content_dir, audio_dir, metadata: dict(metadata, status="complete")),
     )
 
     source = tmp_path / "demo.epub"
@@ -252,3 +252,73 @@ def test_import_book_writes_full_text_export_next_to_source(tmp_path, monkeypatc
     body = full_txt.read_text(encoding="utf-8")
     assert "Chapter one text." in body
     assert "Chapter two text." in body
+
+
+@pytest.mark.parametrize("failure", ["alignment", "synthesis"])
+def test_import_book_reports_incomplete_chapters_as_failure(tmp_path, monkeypatch, failure):
+    library = tmp_path / "library"
+    book_dir = library / "Incomplete"
+    content_dir = book_dir / "content"
+    audio_dir = book_dir / "audio"
+    source_dir = book_dir / "source"
+    for directory in (content_dir, audio_dir, source_dir):
+        directory.mkdir(parents=True)
+    source_epub = source_dir / "Incomplete.epub"
+    source_epub.write_text("epub", encoding="utf-8")
+    for stem in ("ch_001", "ch_002"):
+        (content_dir / f"{stem}.txt").write_text("Hola mundo", encoding="utf-8")
+    (audio_dir / "ch_001.wav").write_bytes(b"existing-audio")
+    (content_dir / "ch_001.json").write_text("[]", encoding="utf-8")
+    if failure == "alignment":
+        (audio_dir / "ch_002.wav").write_bytes(b"existing-audio")
+    (book_dir / "metadata.json").write_text(
+        json.dumps({"status": "text_only", "voice": "M3", "tts_model": "supertonic-3"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(bm, "LIBRARY_PATH", library)
+    monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: "ebook-convert"))
+    monkeypatch.setattr(bm.BookManager, "_detect_gpu_free_memory_mib", staticmethod(lambda: None))
+
+    class FailedAlignment:
+        returncode = 1
+
+        def poll(self):
+            return self.returncode
+
+        def communicate(self, timeout=None):
+            return "", "Alignment failed"
+
+    def failed_popen(cmd, **kwargs):
+        if str(cmd[1]).endswith("whisperx_align_worker.py"):
+            raise OSError("Worker unavailable")
+        return FailedAlignment()
+
+    monkeypatch.setattr(bm.subprocess, "Popen", failed_popen)
+    fake_mod = types.ModuleType("adapters.supertonic_backend")
+
+    class FailedSynthesis:
+        def __init__(self, model=None):
+            pass
+
+        def ensure_model(self):
+            return self
+
+        def synthesize(self, text, voice, max_chars=800, lang="na"):
+            return None
+
+    fake_mod.SupertonicBackend = FailedSynthesis
+    monkeypatch.setitem(sys.modules, "adapters.supertonic_backend", fake_mod)
+    logs = []
+    events, progress = _progress_collector()
+
+    assert bm.BookManager.import_book(
+        str(source_epub), "M3", progress, log_callback=logs.append
+    ) is False
+
+    metadata = json.loads((book_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["status"] == ("synthesized" if failure == "alignment" else "text_only")
+    assert metadata["last_chapter"] == 1
+    assert not any(message == "Ready!" for _, message in events)
+    assert any("1/2 chapters have audio and alignment" in message for message in logs)
+    assert "Import failed" in events[-1][1]
+    assert (audio_dir / "ch_001.wav").read_bytes() == b"existing-audio"

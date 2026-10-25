@@ -220,8 +220,7 @@ if ($UseGpu) {
         Write-Host "GPU mode requires a single ONNX Runtime package."
         Write-Host "Detected both 'onnxruntime' and 'onnxruntime-gpu'."
         Write-Host "Fix with:"
-        Write-Host "  pip uninstall -y onnxruntime onnxruntime-gpu"
-        Write-Host "  pip install onnxruntime-gpu==1.24.1"
+        Write-Host "  uv sync --locked --no-group cpu --extra gpu"
         exit 1
     }
 }
@@ -233,8 +232,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "ONNX Runtime failed to import in this venv."
     Write-Host "Try one of these fixes:"
     Write-Host "  1) CPU path (recommended for E2E stability):"
-    Write-Host "     pip uninstall -y onnxruntime-gpu"
-    Write-Host "     pip install onnxruntime"
+    Write-Host "     uv sync --locked"
     Write-Host "  2) GPU path: install matching CUDA/cuDNN runtime for your onnxruntime-gpu wheel."
     exit $LASTEXITCODE
 }

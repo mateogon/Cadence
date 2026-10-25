@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from system.book_manager import BookManager
+from system.whisperx_runtime import load_whisperx_model
 
 
 def atomic_write_json(path: Path, payload):
@@ -53,7 +54,7 @@ def main():
     if device == "cpu" and compute_type == "float16":
         compute_type = "int8"
 
-    model = whisperx.load_model(
+    model = load_whisperx_model(
         args.whisper_model,
         device,
         compute_type=compute_type,
