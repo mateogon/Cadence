@@ -146,6 +146,7 @@ def main():
             t2 = time.perf_counter()
 
             report = {
+                "language": language_code,
                 "device": device,
                 "whisper_model": args.whisper_model,
                 "whisper_batch_size": args.whisper_batch_size,

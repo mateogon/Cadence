@@ -29,6 +29,9 @@ def prepare_qt_runtime():
     if os.name != "nt":
         return
 
+    # Load ORT before Qt can bind its older bundled MSVC runtime DLLs.
+    import onnxruntime
+
     # Ensure selected Qt backend wheel DLL directory is preferred.
     try:
         from pathlib import Path

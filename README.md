@@ -5,7 +5,7 @@ Cadence is an immersive reading pipeline: **book file -> chapter text -> audiobo
 
 ## Overview
 - Imports EPUB/MOBI/AZW3 files (MOBI/AZW3 are converted to EPUB via Calibre) and extracts ordered chapter text.
-- Synthesizes chapter audio with Supertonic TTS.
+- Synthesizes chapter audio with [Supertonic 3](https://pypi.org/project/supertonic/1.3.1/) across 31 languages.
 - Aligns audio to text with WhisperX for word timestamps.
 - Plays back in a synced reader/player UI.
 - Uses a streaming chapter pipeline so reading can start before full import finishes.
@@ -24,6 +24,9 @@ Cadence is an immersive reading pipeline: **book file -> chapter text -> audiobo
   - If `.wav` and `.json` both exist, Cadence skips that chapter.
 - This makes resume robust after interruptions and enables immediate reading while import is still running.
 - Library cards update live with ready counts (`Audio x/y`, `Alignment x/y`) during import.
+- EPUB `dc:language` is saved in `metadata.json` and passed to Supertonic. Regional tags such as `es-CL` use their base code; missing or unsupported codes use `na`.
+- New books store `tts_backend` and `tts_model`. Resume uses the book's stored voice and model even if the current settings change.
+- Older books without TTS identity keep their existing audio. For missing chapters, Cadence warns that the historical model is unknown, uses the configured Supertonic model once, and stores that continuation configuration for later resumes. This does not establish which model produced older WAV files. Select the known older model before continuing if needed.
 
 ## Read While Importing
 Cadence processes books one chapter at a time, not as one long batch.
@@ -89,6 +92,9 @@ Useful keys:
 - `CADENCE_EXTRACT_WORKERS`
 - `CADENCE_SYNTH_WORKERS`
 - `CADENCE_TTS_MAX_CHARS`
+- `CADENCE_TTS_MODEL`: `supertonic-3` by default; `supertonic-2` and `supertonic` remain available.
+- `CADENCE_TTS_SPEED`: `0.7`–`2.0`, default `1.05`.
+- `CADENCE_TTS_STEPS`: integer `1`–`100`, default `8`.
 - `CADENCE_FORCE_CPU`
 - `CADENCE_CUDA_ONLY`
 - `CADENCE_WHISPERX_MODEL`
@@ -97,6 +103,10 @@ Useful keys:
 - `CADENCE_WHISPERX_DEVICE`
 - `CADENCE_WHISPERX_PYTHON`
 - `CADENCE_CALIBRE_PATH`
+
+The runtime settings dialog validates the TTS speed and steps before applying them. Supertonic's package handles text chunking through `max_chunk_length`; `CADENCE_TTS_MAX_CHARS` controls that value. A single sentence beyond the package's 100,000-character input limit is not supported.
+
+WhisperX detects each chapter's language for alignment. Its diagnostic `ch_XXX.whisperx_report.json` records the detected language; the reader's alignment JSON format is unchanged.
 
 ## Project Docs
 - [Contributing](CONTRIBUTING.md)

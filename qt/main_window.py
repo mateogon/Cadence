@@ -12,7 +12,7 @@ from pathlib import Path
 from qt.qt_compat import QtCore, QtGui, QtMultimedia, QtWidgets, Signal, Slot
 
 from system.book_manager import BookManager
-from system.runtime_settings import DEFAULTS, apply_settings_to_environ, load_settings, save_settings
+from system.runtime_settings import DEFAULTS, apply_settings_to_environ, load_settings, resolve_tts_settings, save_settings
 from qt.styles import (
     STYLE_PROFILES,
     build_qss,
@@ -300,6 +300,7 @@ class RuntimeSettingsDialog(QtWidgets.QDialog):
 
         settings = load_settings()
         select_options = {
+            "CADENCE_TTS_MODEL": ["supertonic-3", "supertonic-2", "supertonic"],
             "CADENCE_STYLE_PROFILE": sorted(STYLE_PROFILES.keys()),
             "CADENCE_FORCE_CPU": ["0", "1"],
             "CADENCE_USE_TENSORRT": ["0", "1"],
@@ -323,6 +324,8 @@ class RuntimeSettingsDialog(QtWidgets.QDialog):
             "CADENCE_WHISPERX_DEVICE": ["auto", "cuda", "cpu"],
         }
         editable_combo_options = {
+            "CADENCE_TTS_SPEED": ["0.7", "1.0", "1.05", "1.25", "1.5", "2.0"],
+            "CADENCE_TTS_STEPS": ["5", "8", "10", "12"],
             "CADENCE_EXTRACT_WORKERS": ["1", "2", "4", "6", "8"],
             "CADENCE_SYNTH_WORKERS": ["1", "2", "3", "4"],
             "CADENCE_TTS_MAX_CHARS": ["500", "800", "1000", "1200", "1600", "2000"],
@@ -405,6 +408,15 @@ class RuntimeSettingsDialog(QtWidgets.QDialog):
                 updated[k] = w.text().strip()
             else:
                 updated[k] = ""
+        try:
+            resolve_tts_settings(
+                model=updated["CADENCE_TTS_MODEL"],
+                speed=updated["CADENCE_TTS_SPEED"],
+                steps=updated["CADENCE_TTS_STEPS"],
+            )
+        except ValueError as exc:
+            QtWidgets.QMessageBox.warning(self, "Invalid TTS settings", str(exc))
+            return
         save_settings(updated)
         apply_settings_to_environ(updated, override=True)
         self.accept()

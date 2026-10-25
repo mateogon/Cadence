@@ -3,6 +3,8 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 from system import book_manager as bm
 
 
@@ -163,14 +165,16 @@ def test_import_book_resume_with_ready_artifacts_finishes_complete(tmp_path, mon
     assert any("Resuming import for" in line for line in logs)
 
 
-def test_import_book_uses_extracted_opf_metadata(tmp_path, monkeypatch):
+@pytest.mark.parametrize("stored_model", [None, "supertonic-2"])
+def test_import_book_uses_extracted_opf_metadata(tmp_path, monkeypatch, stored_model):
+    monkeypatch.delenv("CADENCE_TTS_MODEL", raising=False)
     monkeypatch.setattr(bm, "LIBRARY_PATH", tmp_path / "library")
     bm.LIBRARY_PATH.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(bm.BookManager, "_get_calibre_executable", staticmethod(lambda: "ebook-convert"))
     monkeypatch.setattr(
         bm.BookManager,
         "_extract_chapter_texts",
-        staticmethod(lambda **kwargs: (2, {"title": "Canonical Title", "author": "Author X", "cover": "cover.jpg"})),
+        staticmethod(lambda **kwargs: (2, {"title": "Canonical Title", "author": "Author X", "cover": "cover.jpg", "language": "es-CL"})),
     )
     monkeypatch.setattr(bm.BookManager, "_run_streaming_pipeline", staticmethod(lambda **kwargs: True))
     monkeypatch.setattr(
@@ -181,6 +185,13 @@ def test_import_book_uses_extracted_opf_metadata(tmp_path, monkeypatch):
 
     source = tmp_path / "demo.epub"
     source.write_text("epub-bytes", encoding="utf-8")
+    if stored_model:
+        previous_book = bm.LIBRARY_PATH / "demo"
+        previous_book.mkdir()
+        (previous_book / "metadata.json").write_text(
+            json.dumps({"status": "processing", "tts_backend": "supertonic", "tts_model": stored_model}),
+            encoding="utf-8",
+        )
 
     events, progress = _progress_collector()
     ok = bm.BookManager.import_book(
@@ -195,6 +206,9 @@ def test_import_book_uses_extracted_opf_metadata(tmp_path, monkeypatch):
     assert saved["title"] == "Canonical Title"
     assert saved["author"] == "Author X"
     assert saved["cover"] == "cover.jpg"
+    assert saved["language"] == "es-CL"
+    assert saved["tts_backend"] == "supertonic"
+    assert saved["tts_model"] == (stored_model or "supertonic-3")
 
 
 def test_import_book_writes_full_text_export_next_to_source(tmp_path, monkeypatch):
