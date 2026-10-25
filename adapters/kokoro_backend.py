@@ -1,7 +1,6 @@
 import math
 import os
 import re
-import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +10,8 @@ from core.tts_backend import SynthesisResult, TTSBackend
 DEFAULT_MODEL = "hexgrad/Kokoro-82M"
 SAMPLE_RATE = 24000
 SPEECH_BLOCK_CHARS = 450
+_SENTENCE_END = re.compile(r"""[.!?…]+["'”’)\]}»]*(?=\s|$)""")
+_ABBREVIATION_END = re.compile(r"\b(?:Mr|Mrs|Dr|St|e\.g|i\.e)\.$", re.IGNORECASE)
 
 # Kokoro-82M's voice catalog; listing voices must not load the optional model.
 VOICES = (
@@ -64,15 +65,33 @@ def _spoken_text(text):
     return bool(re.search(r"[^\W_]", text, re.UNICODE))
 
 
+def _sentences(paragraph):
+    start = 0
+    for ending in _SENTENCE_END.finditer(paragraph):
+        if _ABBREVIATION_END.search(paragraph, 0, ending.start() + 1):
+            continue
+        yield paragraph[start:ending.end()].strip()
+        start = ending.end()
+    tail = paragraph[start:].strip()
+    if tail:
+        yield tail
+
+
 def speech_blocks(text):
-    """Join extracted sentence lines and bound long paragraphs at word boundaries."""
+    """Pack whole sentences; an oversize sentence belongs to Kokoro's own splitter."""
     blocks = []
     for paragraph in re.split(r"\n\s*\n", text):
         paragraph = " ".join(paragraph.split())
-        if _spoken_text(paragraph):
-            blocks.extend(textwrap.wrap(
-                paragraph, width=SPEECH_BLOCK_CHARS, break_on_hyphens=False,
-            ))
+        if not _spoken_text(paragraph):
+            continue
+        current = ""
+        for sentence in _sentences(paragraph):
+            if current and len(current) + 1 + len(sentence) > SPEECH_BLOCK_CHARS:
+                blocks.append(current)
+                current = ""
+            current = f"{current} {sentence}" if current else sentence
+        if current:
+            blocks.append(current)
     return "\n".join(blocks)
 
 
@@ -151,7 +170,7 @@ class KokoroBackend(TTSBackend):
         voices = self.list_voices(lang)
         if not voices:
             raise ValueError(f"Kokoro does not support language {lang!r}.")
-        return voices[0]
+        return {"a": "af_heart", "b": "bf_emma"}.get(voices[0][0], voices[0])
 
     def _pipeline(self, lang_code):
         model = self.ensure_model()

@@ -59,14 +59,15 @@ def test_adapter_and_voice_catalog_need_no_optional_imports():
 import builtins
 original = builtins.__import__
 def guarded(name, *args, **kwargs):
-    if name.split('.')[0] in {'torch', 'kokoro'}:
+    if name.split('.')[0] in {'torch', 'kokoro', 'spacy', 'nltk'}:
         raise AssertionError('optional import: ' + name)
     return original(name, *args, **kwargs)
 builtins.__import__ = guarded
-from adapters.kokoro_backend import KokoroBackend
+from adapters.kokoro_backend import KokoroBackend, speech_blocks
 backend = KokoroBackend()
 assert backend.default_voice('es') == 'ef_dora'
 assert backend.list_voices('en-GB')
+assert speech_blocks('Mr. Bennet replied. Another sentence.')
 """
     subprocess.run([sys.executable, "-c", code], check=True, cwd=os.getcwd())
 
@@ -134,20 +135,85 @@ def test_catalog_defaults_and_unknown_language():
     backend = KokoroBackend()
     assert len(backend.list_voices()) == 54
     assert backend.default_voice("na") == "af_heart"
-    assert backend.default_voice("en-GB") == "bf_alice"
+    assert backend.default_voice("en-GB") == "bf_emma"
     assert backend.default_voice("es") == "ef_dora"
     assert backend.list_voices("de") == []
     with pytest.raises(ValueError, match="language"):
         backend.default_voice("de")
 
 
-def test_speech_blocks_join_lines_preserve_paragraphs_and_bound_long_lines():
-    text = "First sentence.\nSecond sentence.\n\n" + "longword " * 140
-    blocks = speech_blocks(text).splitlines()
-    assert blocks[0] == "First sentence. Second sentence."
+@pytest.mark.parametrize("lang", [None, "na", "en", "en-US", "en_US"])
+def test_english_default_prefers_heart(lang):
+    assert KokoroBackend().default_voice(lang) == "af_heart"
+
+
+@pytest.mark.parametrize("lang", ["en-GB", "en_GB", "en-GB-x-test"])
+def test_uk_default_prefers_emma_without_reordering_catalog(lang):
+    backend = KokoroBackend()
+    assert backend.default_voice(lang) == "bf_emma"
+    assert backend.list_voices(lang)[0] == "bf_alice"
+
+
+def test_explicit_uk_voice_is_not_replaced_by_better_default(fake_kokoro):
+    KokoroBackend().synthesize("Hello", "bf_alice", lang="en-GB")
+    assert fake_kokoro.calls[0][1]["voice"] == "bf_alice"
+
+
+def test_speech_blocks_join_lines_and_preserve_blank_paragraph_boundaries():
+    text = "First sentence.\nSecond sentence.\n\nThird sentence.\n\n\nFourth."
+    assert speech_blocks(text).splitlines() == [
+        "First sentence. Second sentence.", "Third sentence.", "Fourth.",
+    ]
+
+
+def test_speech_blocks_pack_900_character_paragraph_at_sentence_ends():
+    sentences = [f"Sentence {index} " + "word " * 14 + "is done." for index in range(10)]
+    sentences[0] = sentences[0].replace("is done.", "has ended.")
+    sentences[-1] = sentences[-1].replace("is done.", "is set.")
+    paragraph = " ".join(sentences)
+    assert len(paragraph) == 900
+    blocks = speech_blocks(paragraph).splitlines()
+    assert len(blocks) == 3
     assert all(len(block) <= 450 for block in blocks)
-    assert " ".join(blocks[1:]).split() == ("longword " * 140).split()
-    assert speech_blocks("X" * 901).splitlines() == ["X" * 450, "X" * 450, "X"]
+    assert blocks == [" ".join(sentences[:4]), " ".join(sentences[4:9]), sentences[9]]
+
+
+def test_speech_blocks_keep_700_character_sentence_whole():
+    sentence = "word " * 139 + "ends."
+    assert len(sentence) == 700
+    assert speech_blocks(sentence).splitlines() == [sentence]
+    assert speech_blocks(f"First sentence. {sentence} Last sentence.").splitlines() == [
+        "First sentence.", sentence, "Last sentence.",
+    ]
+
+
+@pytest.mark.parametrize("sentence", [
+    "Mr. Bennet replied.", "Mrs. Bennet replied.", "Dr. Bennet replied.",
+    "St. James is nearby.", "Use e.g. these examples.", "Use i.e. this wording.",
+    "The value is 3.14 today.", "MR. Bennet replied.",
+])
+def test_speech_blocks_protect_common_abbreviations_and_decimals(sentence):
+    previous = "word " * 87 + "end."
+    assert speech_blocks(f"{previous} {sentence}").splitlines() == [previous, sentence]
+
+
+@pytest.mark.parametrize("terminator,closer", [
+    (".", ""), ("!", ""), ("?", ""), ("…", ""),
+    (".", '"'), ("!", "'"), ("?", "”"), ("…", "’"),
+    (".", ")"), ("!", "]"), ("?", "}"), ("…", "»"), ("?!", '\")'),
+])
+def test_speech_blocks_keep_terminators_and_closing_quotes_or_brackets(terminator, closer):
+    first = "word " * 87 + f"ends{terminator}{closer}"
+    assert speech_blocks(f"{first} Another sentence.").splitlines() == [
+        first, "Another sentence.",
+    ]
+
+
+def test_speech_blocks_retain_unterminated_final_sentence():
+    first = "word " * 87 + "end."
+    assert speech_blocks(f"{first} This tail has no terminator").splitlines() == [
+        first, "This tail has no terminator",
+    ]
 
 
 def test_offsets_include_package_internal_splits_across_two_input_blocks(fake_kokoro):

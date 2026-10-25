@@ -135,11 +135,15 @@ For Japanese, start with `uv run --extra kokoro --with 'misaki[ja]' main.py`;
 use `misaki[zh]` for Mandarin. These optional language paths are not covered by CI.
 An unsupported book language or incompatible explicit voice stops the import
 with an error. Existing Supertonic voice selections map to Kokoro's language
-default for a new book. Resume always keeps the book's saved backend and voice.
+default for a new book. New English books default to `af_heart` (US/general English) or `bf_emma` (UK).
+Other languages retain catalog order. Resume always keeps the book's saved backend and voice.
 
-Cadence joins sentence lines into paragraph blocks of about 450 characters.
-This avoids inference overhead and added pauses from synthesizing every sentence
-separately. Blank lines preserve paragraph boundaries. Kokoro's native English
+Cadence packs complete sentences into paragraph blocks of about 450 characters.
+It preserves common abbreviations and decimals when finding sentence boundaries.
+A sentence longer than 450 characters remains whole; Kokoro handles its internal
+splits. This avoids added mid-sentence pauses from arbitrary word wrapping and
+inference overhead from synthesizing every short sentence separately. Blank lines
+preserve paragraph boundaries. Kokoro's native English
 word times accumulate the duration of every audio fragment before the next
 fragment starts. Missing or invalid times trigger WhisperX for the whole chapter,
 with a log entry. Non-English synthesis currently uses that fallback.
