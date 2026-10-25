@@ -8,7 +8,11 @@ import threading
 import re
 import concurrent.futures
 import difflib
+import math
 from pathlib import Path
+
+from adapters.tts_factory import KOKORO_MODEL, create_backend
+from core.tts_backend import SynthesisResult
 
 # --- Configuration ---
 # Default Calibre CLI location on Windows. A custom path can be supplied via
@@ -968,6 +972,31 @@ class BookManager:
                     shutil.rmtree(d, ignore_errors=True)
 
     @staticmethod
+    def _normalize_native_word_timestamps(words):
+        if not isinstance(words, list) or not words:
+            return None
+
+        def valid_word(word):
+            return (
+                isinstance(word["word"], str) and bool(word["word"].strip())
+                and math.isfinite(word["start"]) and math.isfinite(word["end"])
+                and 0 <= word["start"] <= word["end"]
+            )
+
+        try:
+            normalized = [
+                {"word": word["word"], "start": float(word["start"]), "end": float(word["end"])}
+                for word in words
+            ]
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return None
+        if not all(valid_word(word) for word in normalized):
+            return None
+        if any(current["start"] < previous["start"] for previous, current in zip(normalized, normalized[1:])):
+            return None
+        return normalized
+
+    @staticmethod
     def _run_streaming_pipeline(
         book_dir,
         content_dir,
@@ -1210,14 +1239,16 @@ class BookManager:
                 }
             )
 
+        tts_backend = str(metadata.get("tts_backend") or "supertonic").strip()
         tts_model = str(metadata.get("tts_model") or "").strip()
         language = str(metadata.get("language") or "na").strip() or "na"
         if any(not chapter["has_audio"] for chapter in chapters):
-            tts_backend = str(metadata.get("tts_backend") or "supertonic").strip()
-            if tts_backend != "supertonic":
+            if tts_backend not in {"supertonic", "kokoro"}:
                 raise ValueError(f"Unsupported stored TTS backend: {tts_backend}")
             if not tts_model:
-                tts_model = os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
+                tts_model = KOKORO_MODEL if tts_backend == "kokoro" else (
+                    os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
+                )
                 log(
                     "Legacy book has no stored TTS model; the historical audio model is unknown. "
                     f"Using '{tts_model}' for pending chapters and preserving existing audio."
@@ -1319,11 +1350,38 @@ class BookManager:
                     json.dump(metadata, f, indent=4)
                 update_stream_progress("Ready", chapter["stem"])
 
+        def save_synthesized_chapter(backend, result, chapter, text):
+            audio = result.audio if isinstance(result, SynthesisResult) else result
+            if audio is None:
+                return False
+            backend.save_audio(audio, chapter["wav"])
+            chapter["has_audio"] = chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
+            if not chapter["has_audio"] or not isinstance(result, SynthesisResult):
+                return chapter["has_audio"]
+
+            native_words = BookManager._normalize_native_word_timestamps(result.word_timestamps)
+            if native_words is None:
+                log(f"Native word timestamps unavailable or invalid for {chapter['stem']}; falling back to WhisperX.")
+                return True
+
+            out_json = chapter["json"]
+            temporary = out_json.with_name(f"{out_json.stem}.part.json")
+            try:
+                words = BookManager.align_timestamps(text, native_words)
+                temporary.write_text(json.dumps(words, ensure_ascii=False), encoding="utf-8")
+                os.replace(temporary, out_json)
+                chapter["has_json"] = True
+                log(f"Saved native timestamps: {out_json.name}")
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
+            return True
+
         def align_one_chapter(chapter):
             if is_cancelled():
                 return False
             if chapter["has_json"]:
-                _mark_phase_done(chapter, "align", "align_accounted")
+                mark_ready(chapter)
                 return True
             if not chapter["has_audio"]:
                 return False
@@ -1450,9 +1508,7 @@ class BookManager:
             synth_targets = [c for c in chapters if not c["has_audio"]]
             if worker_count <= 1 or len(synth_targets) <= 1:
                 if synth_targets:
-                    from adapters.supertonic_backend import SupertonicBackend
-
-                    backend = SupertonicBackend(model=tts_model)
+                    backend = create_backend(tts_backend, model=tts_model)
                     backend.ensure_model()
                     for chapter in synth_targets:
                         if is_cancelled():
@@ -1466,19 +1522,14 @@ class BookManager:
                             wav = backend.synthesize(
                                 text_content, voice, max_chars=tts_max_chars, lang=language
                             )
-                            if wav is not None:
-                                backend.save_audio(wav, chapter["wav"])
-                                chapter["has_audio"] = (
-                                    chapter["wav"].exists() and chapter["wav"].stat().st_size > 0
+                            if save_synthesized_chapter(backend, wav, chapter, text_content):
+                                log(f"Saved audio: {chapter['wav'].name}")
+                                _mark_phase_done(
+                                    chapter,
+                                    "synth",
+                                    "synth_accounted",
+                                    elapsed_seconds=(time.monotonic() - synth_started),
                                 )
-                                if chapter["has_audio"]:
-                                    log(f"Saved audio: {chapter['wav'].name}")
-                                    _mark_phase_done(
-                                        chapter,
-                                        "synth",
-                                        "synth_accounted",
-                                        elapsed_seconds=(time.monotonic() - synth_started),
-                                    )
                         else:
                             log(f"Skipped {chapter['txt'].name} (Empty text)")
                             _mark_phase_done(
@@ -1495,9 +1546,7 @@ class BookManager:
 
                 def get_thread_backend():
                     if not hasattr(thread_local, "backend"):
-                        from adapters.supertonic_backend import SupertonicBackend
-
-                        backend = SupertonicBackend(model=tts_model)
+                        backend = create_backend(tts_backend, model=tts_model)
                         backend.ensure_model()
                         thread_local.backend = backend
                     return thread_local.backend
@@ -1514,10 +1563,8 @@ class BookManager:
                     wav_data = backend.synthesize(
                         text_content, voice, max_chars=tts_max_chars, lang=language
                     )
-                    if wav_data is None:
-                        return ("empty", chapter, time.monotonic() - synth_started)
-                    backend.save_audio(wav_data, chapter["wav"])
-                    return ("saved", chapter, time.monotonic() - synth_started)
+                    saved = save_synthesized_chapter(backend, wav_data, chapter, text_content)
+                    return ("saved" if saved else "empty", chapter, time.monotonic() - synth_started)
 
                 with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
                     futures = {
@@ -1676,17 +1723,25 @@ class BookManager:
                 if chapter_count is None:
                     return False
 
+                stored_metadata = metadata
+                tts_backend = str(stored_metadata.get("tts_backend") or (
+                    "supertonic" if metadata_path.exists() else os.getenv("CADENCE_TTS_BACKEND", "supertonic")
+                )).strip() or "supertonic"
+                tts_model = stored_metadata.get("tts_model") or (
+                    KOKORO_MODEL if tts_backend == "kokoro" else (
+                        os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
+                    )
+                )
+                language = str((extracted_meta or {}).get("language", "")).strip()
                 # SAVE METADATA (EARLY)
                 metadata = {
                     "title": str((extracted_meta or {}).get("title", "")).strip() or book_name.replace("_", " "),
                     "author": str((extracted_meta or {}).get("author", "")).strip() or "Unknown",
                     "status": "text_only",
-                    "voice": voice,
-                    "language": str((extracted_meta or {}).get("language", "")).strip(),
-                    "tts_backend": metadata.get("tts_backend") or "supertonic",
-                    "tts_model": metadata.get("tts_model") or (
-                        os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
-                    ),
+                    "voice": stored_metadata.get("voice", "") if tts_backend == "kokoro" else voice,
+                    "language": language,
+                    "tts_backend": tts_backend,
+                    "tts_model": tts_model,
                     "chapters": chapter_count,
                     "total_chapters": chapter_count,
                     "last_chapter": 0,
@@ -1699,6 +1754,18 @@ class BookManager:
                 chapter_count = len(list(content_dir.glob("*.txt")))
                 log(f"Skipped extraction. Found {chapter_count} existing chapters.")
                 metadata["source_epub"] = str(Path("source") / stored_epub_name)
+
+            if metadata.get("tts_backend") == "kokoro" and not metadata.get("voice"):
+                language = metadata.get("language") or "na"
+                backend = create_backend("kokoro", model=metadata.get("tts_model"))
+                if voice == "auto" or re.fullmatch(r"[MF][1-5]", voice or ""):
+                    selected_voice = voice
+                    voice = backend.default_voice(language)
+                    log(f"Using Kokoro voice '{voice}' instead of '{selected_voice}' for language '{language}'.")
+                elif voice not in backend.list_voices(language):
+                    raise ValueError(f"Invalid Kokoro voice '{voice}' for language '{language}'.")
+                metadata["voice"] = voice
+                metadata_path.write_text(json.dumps(metadata, indent=4), encoding="utf-8")
 
             # Export a silent full-book text artifact alongside the stored source EPUB.
             BookManager._write_full_book_text(

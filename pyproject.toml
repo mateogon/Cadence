@@ -23,6 +23,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+kokoro = [
+    "kokoro==0.9.4",
+    "en-core-web-sm",
+    # Newer preshed versions overflow in the macOS English tokenizer.
+    "preshed==3.0.9",
+    "spacy>=3.8.16,<3.9",
+]
 gpu = [
     "onnxruntime-gpu==1.24.1; sys_platform == 'linux' or sys_platform == 'win32'",
     "torch==2.6.0; sys_platform == 'linux' or sys_platform == 'win32'",
@@ -45,6 +52,7 @@ environments = [
 ]
 
 [tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
 torch = [
     { index = "pytorch-cpu", group = "cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
     { index = "pytorch-cu124", extra = "gpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },

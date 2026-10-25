@@ -85,6 +85,7 @@ class _FakeWorkerProc:
 def test_pipeline_generated_short_book(tmp_path, monkeypatch, workers, legacy):
     monkeypatch.setenv("CADENCE_SYNTH_WORKERS", str(workers))
     monkeypatch.setenv("CADENCE_TTS_MODEL", "supertonic-3")
+    monkeypatch.setenv("CADENCE_TTS_BACKEND", "supertonic")
     monkeypatch.chdir(tmp_path)
     library = tmp_path / "library"
     library.mkdir()
@@ -196,6 +197,7 @@ def test_pipeline_generated_short_book(tmp_path, monkeypatch, workers, legacy):
         meta.pop("tts_backend")
         meta.pop("tts_model")
         meta.pop("language")
+        monkeypatch.setenv("CADENCE_TTS_BACKEND", "kokoro")
         (book_dir / "metadata.json").write_text(json.dumps(meta), encoding="utf-8")
     continuation_model = "supertonic-2" if legacy else "supertonic-3"
 

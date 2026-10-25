@@ -1,4 +1,14 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class SynthesisResult:
+    """Audio plus optional chapter-relative word times from the synthesizer."""
+
+    audio: Any
+    word_timestamps: list[dict] | None = None
 
 
 class TTSBackend(ABC):

@@ -33,6 +33,15 @@ requires-python = ">=3.9"
 provides-extras = ["playback", "serve", "dev"]
 
 [[package]]
+name = "addict"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/ef/fd7649da8af11d93979831e8f1f8097e85e82d5bfeabc8c68b39175d8e75/addict-2.4.0.tar.gz", hash = "sha256:b3b2210e0e067a281f5646c8c5db92e99b7231ea8b0eb5f74dbdf9e259d4e494", size = 9186, upload-time = "2020-11-21T16:21:31.416Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6a/00/b08f23b7d7e1e14ce01419a467b583edbb93c6cdb8654e54a9cc579cd61f/addict-2.4.0-py3-none-any.whl", hash = "sha256:249bb56bbfd3cdc2a004ea0ff4c2b6ddc84d53bc2194761636eb314d5cfa5dfc", size = 3832, upload-time = "2020-11-21T16:21:29.588Z" },
+]
+
+[[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -111,6 +120,15 @@ wheels = [
 ]
 
 [[package]]
+name = "annotated-types"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/56/a8120250d128bed162cd73c76d45f6ef9991f3e068f62a8ee060afa3104a/annotated_types-0.8.0.tar.gz", hash = "sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7", size = 15893, upload-time = "2026-07-23T20:16:13.995Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl", hash = "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0", size = 13427, upload-time = "2026-07-23T20:16:12.938Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.15.1"
 source = { registry = "https://pypi.org/simple" }
@@ -186,6 +204,30 @@ wheels = [
 ]
 
 [[package]]
+name = "babel"
+version = "2.18.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/b2/51899539b6ceeeb420d40ed3cd4b7a40519404f9baf3d4ac99dc413a834b/babel-2.18.0.tar.gz", hash = "sha256:b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d", size = 9959554, upload-time = "2026-02-01T12:30:56.078Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl", hash = "sha256:e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35", size = 10196845, upload-time = "2026-02-01T12:30:53.445Z" },
+]
+
+[[package]]
+name = "blis"
+version = "1.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f9/b4/ebcfcce88ce01e4867a659f1db43593be00f150ad6d14bf1df42c85a9965/blis-1.3.4.tar.gz", hash = "sha256:c125acd77ccf0184f476b6a599f9819727e19ed311904ed3281118a3d06082d9", size = 2646618, upload-time = "2026-10-25T20:33:29.099Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/d7/807194876a8dfc23af2ebe57589829525eeeb4c0908fb82d51789537b7e2/blis-1.3.4-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:64021c3cd4b4ee4f80de607750cecc978cd3aa52cf2bc60ceec4c678dd8767ff", size = 1310872, upload-time = "2026-10-25T20:32:00.587Z" },
+    { url = "https://files.pythonhosted.org/packages/12/0f/a94922d7bb42518e9b0b91a6ae1d4e57bfe32c3cb9aed6ce243fd596fbac/blis-1.3.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:56438ff1007744c954e1badc6534752068cfc6dfca1ff65989ae06359a98b7b3", size = 14301329, upload-time = "2026-10-25T20:32:04.025Z" },
+    { url = "https://files.pythonhosted.org/packages/14/27/367002ba7fd6f165f94016c63f158a33433a33c5afeb3cb2171d30a0ce51/blis-1.3.4-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:3f4e7ab7fe1d7735351ed218b2c0cbbd7c637b5532044751f5d6de2588121339", size = 14328698, upload-time = "2026-10-25T20:32:07.678Z" },
+    { url = "https://files.pythonhosted.org/packages/63/35/a9f4962ba0a9845419d7b74bed568fe2441faa73648dfa736737230a46a3/blis-1.3.4-cp312-cp312-win_amd64.whl", hash = "sha256:efd14e598e59cb2d8d65c274bc5d762760213fe5c3956d63b9800cdfd9a4eec1", size = 6199397, upload-time = "2026-10-25T20:32:10.04Z" },
+]
+
+[[package]]
 name = "cadence-reader"
 version = "0.1.0"
 source = { virtual = "." }
@@ -215,6 +257,12 @@ gpu = [
     { name = "torch", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "torchaudio", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
 ]
+kokoro = [
+    { name = "en-core-web-sm", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "kokoro", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "preshed", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "spacy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
 
 [package.dev-dependencies]
 build = [
@@ -238,14 +286,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "en-core-web-sm", marker = "extra == 'kokoro'", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
+    { name = "kokoro", marker = "extra == 'kokoro'", specifier = "==0.9.4" },
     { name = "librosa" },
     { name = "numpy", specifier = "==1.26.4" },
     { name = "onnxruntime-gpu", marker = "(sys_platform == 'linux' and extra == 'gpu') or (sys_platform == 'win32' and extra == 'gpu')", specifier = "==1.24.1" },
+    { name = "preshed", marker = "extra == 'kokoro'", specifier = "==3.0.9" },
     { name = "pygame" },
     { name = "pyqt6", specifier = "==6.6.1" },
     { name = "pyqt6-qt6", specifier = "==6.6.3" },
     { name = "setuptools", marker = "sys_platform == 'win32'", specifier = "<82" },
     { name = "soundfile" },
+    { name = "spacy", marker = "extra == 'kokoro'", specifier = ">=3.8.16,<3.9" },
     { name = "supertonic", specifier = "==1.3.1" },
     { name = "sympy", specifier = "==1.13.1" },
     { name = "torch", specifier = "==2.6.0" },
@@ -255,7 +307,7 @@ requires-dist = [
     { name = "watchfiles" },
     { name = "whisperx", specifier = "==3.3.1" },
 ]
-provides-extras = ["gpu"]
+provides-extras = ["kokoro", "gpu"]
 
 [package.metadata.requires-dev]
 build = [{ name = "pyinstaller" }]
@@ -273,6 +325,15 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-qt" },
     { name = "ruff" },
+]
+
+[[package]]
+name = "catalogue"
+version = "2.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/b4/244d58127e1cdf04cf2dc7d9566f0d24ef01d5ce21811bab088ecc62b5ea/catalogue-2.0.10.tar.gz", hash = "sha256:4f56daa940913d3f09d589c191c74e5a6d51762b3a9e37dd53b7437afd6cda15", size = 19561, upload-time = "2023-09-25T06:29:24.962Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/96/d32b941a501ab566a16358d68b6eb4e4acc373fab3c3c4d7d9e649f7b4bb/catalogue-2.0.10-py3-none-any.whl", hash = "sha256:58c2de0020aa90f4a2da7dfad161bf7b3b054c86a5f09fcedc0b2b740c109a9f", size = 17325, upload-time = "2023-09-25T06:29:23.337Z" },
 ]
 
 [[package]]
@@ -335,6 +396,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cloudpathlib"
+version = "0.26.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/23/25/627c75939f4db1395e7b2e60bec885ed278f7cdbea06b2456d72dcc51c09/cloudpathlib-0.26.0.tar.gz", hash = "sha256:6ea02248f2db7cb10729caf1edbdec92587dfdbbd3df8c71a32aedd4ae55715a", size = 56756, upload-time = "2026-10-02T01:07:19.796Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/aa/c333f1be2afab2d033d51a66cb105f4bfc885b0c546e1168fb889a416b9d/cloudpathlib-0.26.0-py3-none-any.whl", hash = "sha256:abcd7f54bcbb2fbb79c0e96b79241f08866760aee6276586882b3558672d571b", size = 66408, upload-time = "2026-10-02T01:07:18.817Z" },
+]
+
+[[package]]
 name = "cloudpickle"
 version = "3.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -365,6 +435,15 @@ wheels = [
 ]
 
 [[package]]
+name = "confection"
+version = "1.3.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ca/65/efd0fe8a936fc8ca2978cb7b82581fb20d901c6039e746a808f746b7647b/confection-1.3.3.tar.gz", hash = "sha256:f0f6810d567ff73993fe74d218ca5e1ffb6a44fb03f391257fc5d033546cbfaa", size = 54895, upload-time = "2026-03-24T18:45:24.331Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8d/e4/d66708bdf0d92fb4d49b22cdff4b10cec38aca5dcd7e81d909bb55c65cd7/confection-1.3.3-py3-none-any.whl", hash = "sha256:b9fef9ee84b237ef4611ec3eb5797b70e13063e6310ad9f15536373f5e313c82", size = 35902, upload-time = "2026-03-24T18:45:22.664Z" },
+]
+
+[[package]]
 name = "contourpy"
 version = "1.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -377,6 +456,26 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/cc/8f/ec6289987824b29529d0dfda0d74a07cec60e54b9c92f3c9da4c0ac732de/contourpy-1.3.3-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4d00e655fcef08aba35ec9610536bfe90267d7ab5ba944f7032549c55a146da1", size = 362601, upload-time = "2025-07-26T12:01:28.808Z" },
     { url = "https://files.pythonhosted.org/packages/33/1d/acad9bd4e97f13f3e2b18a3977fe1b4a37ecf3d38d815333980c6c72e963/contourpy-1.3.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:459c1f020cd59fcfe6650180678a9993932d80d44ccde1fa1868977438f0b411", size = 1403386, upload-time = "2025-07-26T12:01:33.947Z" },
     { url = "https://files.pythonhosted.org/packages/19/e8/6026ed58a64563186a9ee3f29f41261fd1828f527dd93d33b60feca63352/contourpy-1.3.3-cp312-cp312-win_amd64.whl", hash = "sha256:8153b8bfc11e1e4d75bcb0bff1db232f9e10b274e0929de9d608027e0d34ff8b", size = 226567, upload-time = "2025-07-26T12:01:36.804Z" },
+]
+
+[[package]]
+name = "csvw"
+version = "4.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "babel", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "isodate", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "jsonschema", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "language-tags", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "python-dateutil", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "rdflib", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "rfc3986", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "termcolor", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "uritemplate", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3f/ab/8c7b1c103a91656d023be24f824a6faab25d9ecc4a43310b134793200458/csvw-4.1.1.tar.gz", hash = "sha256:5714d43d744e4069e2b6d0e58a67829ca1bf8d0578aad92cfc74e87d69e6cb31", size = 83386, upload-time = "2026-10-17T08:44:09.952Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/9e/a4e6f6aea5f0dedd53523c653c8f368eb6a2392bce09d36ac36de1db2c0f/csvw-4.1.1-py2.py3-none-any.whl", hash = "sha256:fce2c461899290771eaec28c770e2fd0f6bc1324edb81d688c89e09cf222fcdb", size = 69365, upload-time = "2026-10-17T08:44:08.239Z" },
 ]
 
 [[package]]
@@ -396,12 +495,53 @@ wheels = [
 ]
 
 [[package]]
+name = "curated-tokenizers"
+version = "0.0.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "regex", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/3c/5d98e3fdbae12a0079d5ac06849bce200dd0cbf88b404d4d0fef4f7e3860/curated_tokenizers-0.0.10.tar.gz", hash = "sha256:1c2b506e9c49e999b41939d783e788e021de5586a66a594b222fc2592aa169cf", size = 2237645, upload-time = "2026-08-24T10:05:27.974Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ae/4a/74ee64f9b85534d47102b2a2ff2d2014ef8c72cb338fd2f294e1c4b02ab2/curated_tokenizers-0.0.10-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:6da08827cbf28f5b8d37ecfdd26c027be99d5fac2d2dc2d03a611c7ce294c1af", size = 690321, upload-time = "2026-08-24T10:03:57.436Z" },
+    { url = "https://files.pythonhosted.org/packages/37/fb/20d524a76f8bd226733931b67063c87ecead3b58a7cc3543c27ca46b63c7/curated_tokenizers-0.0.10-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:841743db1da4a4a1298675584771ed973945c31ea9f6dde9f06e9eb6b3974bf3", size = 6309412, upload-time = "2026-08-24T10:04:01.401Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/c7/17d38d7a0cbd88942ea457b09002dd3b834b0ed0a8b127e6341db19355bd/curated_tokenizers-0.0.10-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:584197edf6f4014137e58e90e0c11e7b7ff7b9c820eeba1190441cbf76d4455e", size = 7120908, upload-time = "2026-08-24T10:04:05.689Z" },
+    { url = "https://files.pythonhosted.org/packages/de/ae/57934e2f1a827870b72efdd1406308724ef874fa2a28557d1769869bb860/curated_tokenizers-0.0.10-cp312-cp312-win_amd64.whl", hash = "sha256:8ae890aae25d84248749b0a9b1e771713e72338e59d9c44bf22a3367c1ef867a", size = 752613, upload-time = "2026-08-24T10:04:09.619Z" },
+]
+
+[[package]]
+name = "curated-transformers"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-14-cadence-reader-gpu' and extra != 'group-14-cadence-reader-cpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra != 'extra-14-cadence-reader-gpu' and extra != 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-14-cadence-reader-cpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/70/06/6c12c149a7f737dacc76b4c3949dbc7ff87d622567b86996896ae4d104aa/curated-transformers-0.1.1.tar.gz", hash = "sha256:4671f03314df30efda2ec2b59bc7692ea34fcea44cb65382342c16684e8a2119", size = 16313, upload-time = "2023-05-24T07:29:22.801Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d6/67/3b72b3fdfcadab61bc8f59c17e63770e526ffabd583ed32f174a7c01af85/curated_transformers-0.1.1-py2.py3-none-any.whl", hash = "sha256:d716063d73d803c6925d2dab56fde9b9ab8e89e663c2c0587804944ba488ff01", size = 25972, upload-time = "2023-05-24T07:29:21.119Z" },
+]
+
+[[package]]
 name = "cycler"
 version = "0.12.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a9/95/a3dbbb5028f35eafb79008e7522a75244477d2838f38cbb722248dabc2a8/cycler-0.12.1.tar.gz", hash = "sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c", size = 7615, upload-time = "2023-10-07T05:32:18.335Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30", size = 8321, upload-time = "2023-10-07T05:32:16.783Z" },
+]
+
+[[package]]
+name = "cymem"
+version = "2.0.16"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/06/eb/f7983fc45fc18498924800219b9423b689803509fe24a3cb775ed8cdf707/cymem-2.0.16.tar.gz", hash = "sha256:a1f2f2bf8632f152867967a86dd58014064aa09bf9cb17ae297f4c33a8fc8b6e", size = 12345, upload-time = "2026-10-24T17:50:46.619Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ff/5c/1a1981cc6708d64d90c70d3448c49fd5bb782ffff9bf0224dee60cad9eaf/cymem-2.0.16-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e6387124e0d80bf5e6edbe55d01a56e311c191c63178f9d0dfddc4ce2dc9d31f", size = 49185, upload-time = "2026-10-24T17:49:39.698Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/d3/b8c71770b21d8e9c356a94cebae0b09872333b10c27adab394f4f9a4a7c4/cymem-2.0.16-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:1213ff078e81b67972708097c55a2a7849ce4d046fe253671fe56d193c90eb8a", size = 274525, upload-time = "2026-10-24T17:49:42.228Z" },
+    { url = "https://files.pythonhosted.org/packages/58/53/fcf98d3608376e86fb160cc5faee16b82af7593fea7e2acfb76a9e97ba46/cymem-2.0.16-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:b7e1c15f48687e094df890ec172492a36c022e20a2d65629348c122c9e0d47be", size = 271376, upload-time = "2026-10-24T17:49:44.73Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/40/4973a49bf303bff9b2432b2cc708df80dfa7f6ce52313a787c46ddff1a8d/cymem-2.0.16-cp312-cp312-win_amd64.whl", hash = "sha256:89854b2d81f7f7e4673225ec21fd39bb42a6e9a4de4bf50def9ccc6a0a01882b", size = 41753, upload-time = "2026-10-24T17:49:45.948Z" },
 ]
 
 [[package]]
@@ -432,6 +572,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dlinfo"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/8e/8f2f94cd40af1b51e8e371a83b385d622170d42f98776441a6118f4dd682/dlinfo-2.0.0.tar.gz", hash = "sha256:88a2bc04f51d01bc604cdc9eb1c3cc0bde89057532ca6a3e71a41f6235433e17", size = 12727, upload-time = "2025-01-16T15:43:10.756Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/90/022c79d6e5e6f843268c10b84d4a021ee3afba0621d3c176d3ff2024bfc8/dlinfo-2.0.0-py3-none-any.whl", hash = "sha256:b32cc18e3ea67c0ca9ca409e5b41eed863bd1363dbc9dd3de90fedf11b61e7bc", size = 3654, upload-time = "2025-01-16T15:43:09.474Z" },
+]
+
+[[package]]
 name = "docopt"
 version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -444,6 +593,24 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2c/77/850bef8d72ffb9219f0b1aac23fbc1bf7d038ee6ea666f331fa273031aa2/einops-0.8.2.tar.gz", hash = "sha256:609da665570e5e265e27283aab09e7f279ade90c4f01bcfca111f3d3e13f2827", size = 56261, upload-time = "2026-01-26T04:13:17.638Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/09/f8d8f8f31e4483c10a906437b4ce31bdf3d6d417b73fe33f1a8b59e34228/einops-0.8.2-py3-none-any.whl", hash = "sha256:54058201ac7087911181bfec4af6091bb59380360f069276601256a76af08193", size = 65638, upload-time = "2026-01-26T04:13:18.546Z" },
+]
+
+[[package]]
+name = "en-core-web-sm"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl", hash = "sha256:1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85" },
+]
+
+[[package]]
+name = "espeakng-loader"
+version = "0.2.4"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/26/258c0cd43b9bc1043301c5f61767d6a6c3b679df82790c9cb43a3277b865/espeakng_loader-0.2.4-py3-none-macosx_11_0_arm64.whl", hash = "sha256:d27cdca31112226e7299d8562e889d3e38a1e48055c9ee381b45d669072ee59f", size = 9892565, upload-time = "2025-01-17T01:22:40.365Z" },
+    { url = "https://files.pythonhosted.org/packages/de/1e/25ec5ab07528c0fbb215a61800a38eca05c8a99445515a02d7fa5debcb32/espeakng_loader-0.2.4-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:08721baf27d13d461f6be6eed9a65277e70d68234ff484fd8b9897b222cdcb6d", size = 10078484, upload-time = "2025-01-17T01:22:43.373Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/ed/a3d872fbad4f3a3f3db0e8c31768ab14e77cd77306de16b8b20b1e1df7ea/espeakng_loader-0.2.4-py3-none-win_amd64.whl", hash = "sha256:41f1e08ac9deda2efd1ea9de0b81dab9f5ae3c4b24284f76533d0a7b1dd7abd7", size = 9437292, upload-time = "2025-01-17T01:23:27.463Z" },
 ]
 
 [[package]]
@@ -542,6 +709,19 @@ wheels = [
 ]
 
 [[package]]
+name = "httpcore"
+version = "1.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "h11", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/06/94/82699a10bca87a5556c9c59b5963f2d039dbd239f25bc2a63907a05a14cb/httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8", size = 85484, upload-time = "2025-04-24T22:06:22.219Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55", size = 78784, upload-time = "2025-04-24T22:06:20.566Z" },
+]
+
+[[package]]
 name = "httpcore2"
 version = "2.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -552,6 +732,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c0/61/afa9d6b7452f9eca73f73d45324eb0bb52f098fd5e6049bf6b8263be9b4e/httpcore2-2.16.0.tar.gz", hash = "sha256:c72cd0413563b17e1cd8354677dff887466f8ec2551679759e93126534428643", size = 69886, upload-time = "2026-10-21T07:09:45.31Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/af/c2/ce417c397afa5181f0e3c6ff01a4d01639414e1adef08730d97571297151/httpcore2-2.16.0-py3-none-any.whl", hash = "sha256:5c4358319f2602d984ad93182c9fee5160f22e9da7babdda870a5e7c4e2dc34f", size = 85070, upload-time = "2026-10-21T07:09:42.802Z" },
+]
+
+[[package]]
+name = "httpx"
+version = "0.28.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "certifi", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "httpcore", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "idna", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406, upload-time = "2024-12-06T15:37:23.222Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
 ]
 
 [[package]]
@@ -631,6 +826,15 @@ wheels = [
 ]
 
 [[package]]
+name = "isodate"
+version = "0.7.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/4d/e940025e2ce31a8ce1202635910747e5a87cc3a6a6bb2d00973375014749/isodate-0.7.2.tar.gz", hash = "sha256:4cd1aa0f43ca76f4a6c6c0292a85f40b35ec2e43e315b59f06e6d32171a953e6", size = 29705, upload-time = "2024-10-08T23:04:11.5Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/aa/0aca39a37d3c7eb941ba736ede56d689e7be91cab5d9ca846bde3999eba6/isodate-0.7.2-py3-none-any.whl", hash = "sha256:28009937d8031054830160fce6d409ed342816b543597cece116d966c6d99e15", size = 22320, upload-time = "2024-10-08T23:04:09.501Z" },
+]
+
+[[package]]
 name = "jinja2"
 version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
@@ -652,6 +856,33 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d5/1d/537ab090f302b838943a1b56497dd53059b9a9b46a074936470173a2e207/joblib-1.6.0.tar.gz", hash = "sha256:2ccc96785b12046c08fd6d55839c12857831b54a3c1673ffadd2f04bfc4eda03", size = 327903, upload-time = "2026-08-31T09:39:04.122Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/18/53/84099323c2ec4be98d935f63c033ac4151ee83836ca1050ede3b3aadf155/joblib-1.6.0-py3-none-any.whl", hash = "sha256:3dbbf9f6e4b592a2357b854608e980fe6390d131d7a82f011a377ef2ebef7aba", size = 306115, upload-time = "2026-08-31T09:39:02.298Z" },
+]
+
+[[package]]
+name = "jsonschema"
+version = "4.26.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "jsonschema-specifications", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "referencing", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "rpds-py", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b3/fc/e067678238fa451312d4c62bf6e6cf5ec56375422aee02f9cb5f909b3047/jsonschema-4.26.0.tar.gz", hash = "sha256:0c26707e2efad8aa1bfc5b7ce170f3fccc2e4918ff85989ba9ffa9facb2be326", size = 366583, upload-time = "2026-01-07T13:41:07.246Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/90/f63fb5873511e014207a475e2bb4e8b2e570d655b00ac19a9a0ca0a385ee/jsonschema-4.26.0-py3-none-any.whl", hash = "sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce", size = 90630, upload-time = "2026-01-07T13:41:05.306Z" },
+]
+
+[[package]]
+name = "jsonschema-specifications"
+version = "2025.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "referencing", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/19/74/a633ee74eb36c44aa6d1095e7cc5569bebf04342ee146178e2d36600708b/jsonschema_specifications-2025.9.1.tar.gz", hash = "sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d", size = 32855, upload-time = "2025-09-08T01:34:59.186Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl", hash = "sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe", size = 18437, upload-time = "2025-09-08T01:34:57.871Z" },
 ]
 
 [[package]]
@@ -682,6 +913,34 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/c4/1407df7512a5b36cc79840e01710dc575733c461b13ab866cae77eaf87f3/kiwisolver-1.5.1-graalpy312-graalpy250_312_native-macosx_11_0_arm64.whl", hash = "sha256:482676e5bd48d70ac99d9fc78863469845421e01184fa83f1f9366dc49f7e974", size = 134002, upload-time = "2026-08-28T10:28:08.881Z" },
     { url = "https://files.pythonhosted.org/packages/16/45/c37a21ad5c0ab581a93c55ad544721aaa1f0ae94edb29c6a678a23d013e6/kiwisolver-1.5.1-graalpy312-graalpy250_312_native-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:072bdb15a3c19a5b5dbc8f8fb1f4e1884bf4f3507eeb4cc6334401274d37a5c0", size = 194292, upload-time = "2026-08-28T10:28:11.06Z" },
     { url = "https://files.pythonhosted.org/packages/a6/c1/69f00d627949580e43d57af0aa465df46868d7c29801c137a55374101294/kiwisolver-1.5.1-graalpy312-graalpy250_312_native-win_amd64.whl", hash = "sha256:a5a00665d1a0e26763a7338d7e911d4598fbc1d50dd0d6b7919b7dc6c5d6569f", size = 73362, upload-time = "2026-08-28T10:28:12.449Z" },
+]
+
+[[package]]
+name = "kokoro"
+version = "0.9.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "huggingface-hub", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "loguru", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "misaki", extra = ["en"], marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "numpy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-14-cadence-reader-gpu' and extra != 'group-14-cadence-reader-cpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra != 'extra-14-cadence-reader-gpu' and extra != 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-14-cadence-reader-cpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "transformers", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e8/48/88b8cdf28b068d070195c2817175549dee48e7682e3ab8994bee5f69217e/kokoro-0.9.4.tar.gz", hash = "sha256:fbf633262797f8cf46fdac3315cf9cade67dc8b762c0feccf334892772fb9ac4", size = 26215928, upload-time = "2025-04-05T22:01:35.294Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ea/cc/75f41633c75224ba820a4533163bc8b070b6bf25416014074c63284c2d4e/kokoro-0.9.4-py3-none-any.whl", hash = "sha256:a129dc6364a286bd6a92c396e9862459d3d3e45f2c15596ed5a94dcee5789efd", size = 32592, upload-time = "2025-04-05T22:01:23.018Z" },
+]
+
+[[package]]
+name = "language-tags"
+version = "1.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/ef/8deeb6524134911f5cddcf772cc938a1f890e9d36e45cb2ee004d9c1805b/language_tags-1.3.2.tar.gz", hash = "sha256:fdce91ca2f770710853b3f413205042225e8e64108e6fdb101677d32bab11814", size = 222897, upload-time = "2026-10-23T19:05:11.506Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/81/1c6903907562e8cccc53971d8c49befbe4a146b8e2a333980bba22a5f15e/language_tags-1.3.2-py3-none-any.whl", hash = "sha256:f4feb5034ae57205b80e6dbfbe5efebe03e5f07278579bf9510a05968a377453", size = 216680, upload-time = "2026-10-23T19:05:02.797Z" },
 ]
 
 [[package]]
@@ -779,6 +1038,19 @@ wheels = [
 ]
 
 [[package]]
+name = "loguru"
+version = "0.7.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "win32-setctime", marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/05/a1dae3dffd1116099471c643b8924f5aa6524411dc6c63fdae648c4f1aca/loguru-0.7.3.tar.gz", hash = "sha256:19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6", size = 63559, upload-time = "2024-12-06T11:20:56.608Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/29/0348de65b8cc732daa3e33e67806420b2ae89bdce2b04af740289c5c6c8c/loguru-0.7.3-py3-none-any.whl", hash = "sha256:31a33c10c8e1e10422bfd431aeb5d351c7cf7fa671e3c4df004162264b28220c", size = 61595, upload-time = "2024-12-06T11:20:54.538Z" },
+]
+
+[[package]]
 name = "macholib"
 version = "1.16.4"
 source = { registry = "https://pypi.org/simple" }
@@ -859,6 +1131,28 @@ wheels = [
 ]
 
 [[package]]
+name = "misaki"
+version = "0.9.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "addict", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "regex", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1a/c7/fb01370a76585b46595a01b52f18e65c8ba6d7a313a05e5d9fff0a8e1c69/misaki-0.9.4.tar.gz", hash = "sha256:3960fa3e6de179a90ee8e628446a4a4f6b8c730b6e3410999cf396189f4d9c40", size = 3756765, upload-time = "2025-04-05T21:57:14.186Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/ec/0ee4110ddb54278b8f21c40a140370ae8f687036c4edf578316602697c56/misaki-0.9.4-py3-none-any.whl", hash = "sha256:90e2eeb169786c014c429e5058d2ea6bcd02d651f2a24450ba6c9ffc0f8da15a", size = 3617774, upload-time = "2025-04-05T21:57:10.678Z" },
+]
+
+[package.optional-dependencies]
+en = [
+    { name = "espeakng-loader", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "num2words", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "phonemizer-fork", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "spacy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "spacy-curated-transformers", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+
+[[package]]
 name = "mpmath"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -891,6 +1185,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7b/9f/ae4d6c442e11aea5ff631f36e4e8d5ff4d1f4c330d2c2721cb729fa5eed6/multidict-7.2.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:d615377a8e7bfc4f1983ede3f411c2ac2b0f7c3053f262d0437b7d8bcc4485e3", size = 508675, upload-time = "2026-10-24T20:40:17.249Z" },
     { url = "https://files.pythonhosted.org/packages/68/d5/64108a33c21bde81454b5a400d16baa1378a7d01599de64b131c3e3e3114/multidict-7.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:781ca5dfc2f1d58e47f52216a0c1c7e1ba91ce8aa235459e20de2d402af77fb3", size = 95372, upload-time = "2026-10-24T20:40:19.679Z" },
     { url = "https://files.pythonhosted.org/packages/9d/96/1aaad0e5df33f1f5af21775c411349c0234a6edd581ea403bc81919a6eab/multidict-7.2.1-py3-none-any.whl", hash = "sha256:08ea94663d9e7c25d14d78222f7aee906c472d4837766bec62477c38f6e419dc", size = 28145, upload-time = "2026-10-24T20:40:59.159Z" },
+]
+
+[[package]]
+name = "murmurhash"
+version = "1.0.16"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/0a/1a7e365e3315188ef5bc683950c6108170bd49aa5912a7aeb2463a9317e8/murmurhash-1.0.16.tar.gz", hash = "sha256:09794ace87d87d4adbefe6c614a31ecc5cc65ef815a5c61a02bf3055150bdbbf", size = 13359, upload-time = "2026-10-24T19:59:29.494Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/35/89/42e7c3d8f386340b473497b7656ca677f45d7373472bd63b932e3d225d3e/murmurhash-1.0.16-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:14be1d88e9cad035117a689413a9f2503fc44b92894174d0bc5da850938aa433", size = 30890, upload-time = "2026-10-24T19:58:24.87Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/fc/9b6b6247d2746ee3bd336598908fe357b6499fb7a11789c7ab1f1573edd9/murmurhash-1.0.16-cp312-cp312-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:e043f2f67dde4d357459bedccf6222d61d50198adb4abf7a381cb086e91888b5", size = 132928, upload-time = "2026-10-24T19:58:25.963Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/0f/e4df2a3ba2142b7eefe9beec6a822b934efb7f74055580800b635be94e45/murmurhash-1.0.16-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:966cb42ae3642f5633fe28678d73a5f85b5b036768a33909714ef2f6fffa3c19", size = 133357, upload-time = "2026-10-24T19:58:29.639Z" },
+    { url = "https://files.pythonhosted.org/packages/03/84/306090eeaaf86a38617fab3bbee0a425c4c87fb3c68b0c7395b18acb2f89/murmurhash-1.0.16-cp312-cp312-win_amd64.whl", hash = "sha256:497455428550cd11e5aca80cdfc109b25b880f82817788bbf9f30599e31a842b", size = 25542, upload-time = "2026-10-24T19:58:30.73Z" },
 ]
 
 [[package]]
@@ -963,6 +1269,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9a/8e/105de02c1322cfada6d9710d9146ef8026419d433c9d08359a2d35805811/nodeenv-1.11.0.tar.gz", hash = "sha256:3ce8fe5b71d16e8af7039ca65257354100bc772965d6bc549070649e53b1b146", size = 99301, upload-time = "2026-09-26T11:29:21.367Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/c8/12811c9b48fde162bb72b6f2e78fada9a247a09d7bb5be2050a5d099c77b/nodeenv-1.11.0-py2.py3-none-any.whl", hash = "sha256:edaa16e6c14d7cf395d75d4bbd5a26390f4dc06501a33b4e76282b02cc688a25", size = 34277, upload-time = "2026-09-26T11:29:19.933Z" },
+]
+
+[[package]]
+name = "num2words"
+version = "0.5.14"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "docopt", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/58/ad645bd38b4b648eb2fc2ba1b909398e54eb0cbb6a7dbd2b4953e38c9621/num2words-0.5.14.tar.gz", hash = "sha256:b066ec18e56b6616a3b38086b5747daafbaa8868b226a36127e0451c0cf379c6", size = 218213, upload-time = "2024-12-17T20:17:10.191Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d6/5b/545e9267a1cc080c8a1be2746113a063e34bcdd0f5173fd665a5c13cb234/num2words-0.5.14-py3-none-any.whl", hash = "sha256:1c8e5b00142fc2966fd8d685001e36c4a9911e070d1b120e1beb721fa1edb33d", size = 163525, upload-time = "2024-12-17T20:17:06.074Z" },
 ]
 
 [[package]]
@@ -1231,6 +1549,22 @@ wheels = [
 ]
 
 [[package]]
+name = "phonemizer-fork"
+version = "3.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "dlinfo", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "joblib", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "segments", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/42/fa/9294d2f11890ca49d0bdac7a4da60cbe5686629bfd4987cae0ad75e051cc/phonemizer_fork-3.3.2.tar.gz", hash = "sha256:10e16e827d0443b087062e21b55e805c00989cf1343b2e81e734cae5f6c0cf69", size = 300989, upload-time = "2025-01-30T13:02:31.201Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/f1/0dcce21b0ae16a82df4b6583f8f3ad8e55b35f7e98b6bf536a4dd225fa08/phonemizer_fork-3.3.2-py3-none-any.whl", hash = "sha256:97305c76f4183b3825dae8f4c032265fe78c9946ce58c47d4b62161349264b74", size = 82700, upload-time = "2025-01-30T13:02:28.667Z" },
+]
+
+[[package]]
 name = "pillow"
 version = "13.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1291,6 +1625,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/3a/c3/6965c2690ddce885ec75121572d065a5b94c5a5d8d3e657927ecda9fd715/pre_commit-4.7.0.tar.gz", hash = "sha256:1f3deee12b914c8fa184bd2b5953391c2e4f36763e403d4a23dc9983fa7c6e86", size = 198120, upload-time = "2026-10-12T20:45:40.32Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/83/ce0a196e4f7b20b11ce3aa1fc72fb973f64b7628d51c1b8aebad37fb7f81/pre_commit-4.7.0-py2.py3-none-any.whl", hash = "sha256:2e229038ad3656081b70c27913157e4b636ef306f643f024a8a8e3f0f7b2f877", size = 226261, upload-time = "2026-10-12T20:45:38.858Z" },
+]
+
+[[package]]
+name = "preshed"
+version = "3.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cymem", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "murmurhash", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/4e/76dbf784e7d4ed069f91a4c249b1d6ec6856ef0c0b2fd96992895d458b15/preshed-3.0.9.tar.gz", hash = "sha256:721863c5244ffcd2651ad0928951a2c7c77b102f4e11a251ad85d37ee7621660", size = 14478, upload-time = "2023-09-15T15:44:32.386Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e7/68/1b4772ff3232e71b63a9206936eb1f75e976ebf4e4e24dc9b3ea7b68369b/preshed-3.0.9-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e04f05758875be9751e483bd3c519c22b00d3b07f5a64441ec328bb9e3c03700", size = 128594, upload-time = "2023-09-15T15:44:02.851Z" },
+    { url = "https://files.pythonhosted.org/packages/55/ea/9e6c1a7b1d623f6340379290d603a3b8a71ce52a93f842fbf7547f7f1812/preshed-3.0.9-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7de8f5138bcac7870424e09684dc3dd33c8e30e81b269f6c9ede3d8c7bb8e257", size = 156809, upload-time = "2023-09-15T15:44:06.153Z" },
+    { url = "https://files.pythonhosted.org/packages/db/e4/d074efb7e8a8873d346d2fb8dd43e19b1eae0697351c0d79cff947cba46e/preshed-3.0.9-cp312-cp312-win_amd64.whl", hash = "sha256:24229c77364628743bc29c5620c5d6607ed104f0e02ae31f8a030f99a78a5ceb", size = 122428, upload-time = "2023-09-15T15:44:07.466Z" },
 ]
 
 [[package]]
@@ -1440,6 +1789,38 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cb/27/eeb9f307bf07060f3d9f9aa0fb8c15b01bdfded0a941e4b2719c7f94cacd/pycparser-3.12.tar.gz", hash = "sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6", size = 158785, upload-time = "2026-10-22T13:40:03.56Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl", hash = "sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e", size = 62600, upload-time = "2026-10-22T13:40:02.021Z" },
+]
+
+[[package]]
+name = "pydantic"
+version = "2.14.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-types", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pydantic-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "typing-inspection", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7c/0b/8e10b2e693af8ec54346a14caf36221334775975a747c9ceaa3f8371d96d/pydantic-2.14.1.tar.gz", hash = "sha256:94f478203dd03404682a1ada216965651dd74b1d2d5ffd62e00e0837caab5c26", size = 900362, upload-time = "2026-10-11T18:37:55.396Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/35/ea/a56b9fe5066f3537b7882f77e9c5dfb26d8c2eefdaed9b5fc73d57b4dc22/pydantic-2.14.1-py3-none-any.whl", hash = "sha256:9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454", size = 488106, upload-time = "2026-10-11T18:37:53.437Z" },
+]
+
+[[package]]
+name = "pydantic-core"
+version = "2.50.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a6/24/af4ec4be49fbc810f35b0bdcacc3d433b56bbfa469fd3bfd4ae116cd9bf1/pydantic_core-2.50.1.tar.gz", hash = "sha256:e50d7b94baac6c7d09927fa5ca5800a0c7ee5015c7fcff65beb3a1931b5a6e09", size = 513515, upload-time = "2026-10-11T18:35:44.82Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/a3/f8b1b39349c33037c73d7a1b794c9c29d8f07d5bd2b74399c1375a529cc6/pydantic_core-2.50.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e8e1d6ce820aa23317e8209a86bd65a540973c12dc7552b48a4f6c8e9926815e", size = 2025779, upload-time = "2026-10-11T18:32:21.723Z" },
+    { url = "https://files.pythonhosted.org/packages/90/24/48cd98388e4ac2c08d0800af36d15413db15e20387f1038123a2c86cb2f6/pydantic_core-2.50.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:93ba4e9d8210d941c200431a56b2c0400b131865947903937ed3ec5404307d2e", size = 2160157, upload-time = "2026-10-11T18:32:29.553Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/e6/b2accfdff17e5a88d6358536702146de00f9339adaa4d5bbe1ee93cb4832/pydantic_core-2.50.1-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:acbf31f37c53a5ac0c34706c80b4f5107ba20b05fdd3816124bf236ef0c57dd2", size = 2476839, upload-time = "2026-10-11T18:32:37.119Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/17/8bbd530b8659e9d963f5b16f6cb8e159f4cd174b4d6304e48969ab12dba8/pydantic_core-2.50.1-cp312-cp312-win_amd64.whl", hash = "sha256:132529c83901437ff642f585216831bf5fd7a91df66829907e155192ead62498", size = 2172522, upload-time = "2026-10-11T18:32:40.112Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/81/f02de95eec7794dfc7a5bc69a834f0e834b31b3009014ce6de903855f775/pydantic_core-2.50.1-graalpy312-graalpy250_312_native-macosx_11_0_arm64.whl", hash = "sha256:a51eee75939cf811ac09b278745a6cee7dc873ccfbc8b9af3cc88fe4b7ce25b5", size = 2039027, upload-time = "2026-10-11T18:35:18.07Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/b9/7664d1592a0e5a74903f357cd5b28ceb7336f3473256c5a4e8c8432f1881/pydantic_core-2.50.1-graalpy312-graalpy250_312_native-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:88e492e8b9d0312e7dc13667c30222abf284dc3b79b5302b3607b41a5784ce61", size = 2269883, upload-time = "2026-10-11T18:35:22.48Z" },
 ]
 
 [[package]]
@@ -1670,6 +2051,32 @@ wheels = [
 ]
 
 [[package]]
+name = "rdflib"
+version = "7.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyparsing", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/f5/18bb77b7af9526add0c727a3b2048959847dc5fb030913e2918bf384fec3/rdflib-7.6.0.tar.gz", hash = "sha256:6c831288d5e4a5a7ece85d0ccde9877d512a3d0f02d7c06455d00d6d0ea379df", size = 4943826, upload-time = "2026-02-13T07:15:55.938Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/c2/6604a71269e0c1bd75656d5a001432d16f2cc5b8c057140ec797155c295e/rdflib-7.6.0-py3-none-any.whl", hash = "sha256:30c0a3ebf4c0e09215f066be7246794b6492e054e782d7ac2a34c9f70a15e0dd", size = 615416, upload-time = "2026-02-13T07:15:46.487Z" },
+]
+
+[[package]]
+name = "referencing"
+version = "0.37.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "rpds-py", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/22/f5/df4e9027acead3ecc63e50fe1e36aca1523e1719559c499951bb4b53188f/referencing-0.37.0.tar.gz", hash = "sha256:44aefc3142c5b842538163acb373e24cce6632bd54bdb01b21ad5863489f50d8", size = 78036, upload-time = "2025-10-13T15:30:48.871Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/58/ca301544e1fa93ed4f80d724bf5b194f6e4b945841c5bfd555878eea9fcb/referencing-0.37.0-py3-none-any.whl", hash = "sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231", size = 26766, upload-time = "2025-10-13T15:30:47.625Z" },
+]
+
+[[package]]
 name = "regex"
 version = "2026.9.29"
 source = { registry = "https://pypi.org/simple" }
@@ -1698,6 +2105,15 @@ wheels = [
 ]
 
 [[package]]
+name = "rfc3986"
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/79/30/5b1b6c28c105629cc12b33bdcbb0b11b5bb1880c6cfbd955f9e792921aa8/rfc3986-1.5.0.tar.gz", hash = "sha256:270aaf10d87d0d4e095063c65bf3ddbc6ee3d0b226328ce21e036f946e421835", size = 49378, upload-time = "2021-05-07T23:29:27.183Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c4/e5/63ca2c4edf4e00657584608bee1001302bbf8c5f569340b78304f2f446cb/rfc3986-1.5.0-py2.py3-none-any.whl", hash = "sha256:a86d6e1f5b1dc238b218b012df0aa79409667bb209e58da56d0b94704e712a97", size = 31976, upload-time = "2021-05-07T23:29:25.611Z" },
+]
+
+[[package]]
 name = "rich"
 version = "15.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1708,6 +2124,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36", size = 230680, upload-time = "2026-04-12T08:24:00.75Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl", hash = "sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb", size = 310654, upload-time = "2026-04-12T08:24:02.83Z" },
+]
+
+[[package]]
+name = "rpds-py"
+version = "2026.9.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/68/3bd46b8a5e01d3c2ebdf9c5e9497912e3fe0cde02bac21a7130ca866e403/rpds_py-2026.9.1.tar.gz", hash = "sha256:4793ef7f78268b124b73fa933440f01d258bbae01de9fa53e9080c9ab0425a12", size = 63948, upload-time = "2026-10-04T16:32:36.469Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/90/81/ac6a0d064982251856ce009c9e1dd51a34110b3c055aa7d1aad18b4899a3/rpds_py-2026.9.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e21c1429e205828ea886a2293a4a2c8e01f4c25d9893ca330e97a6cf73f52e7b", size = 341380, upload-time = "2026-10-04T16:29:17.706Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/6d/b26eb1e75395925b3a142ed351cbed2ec8212f5c9d937aee3df32c701baa/rpds_py-2026.9.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:addeda51556dac7c1a2f14cda62db8b621cd12afba3091d03a96c72932387eab", size = 371261, upload-time = "2026-10-04T16:29:25.1Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/bc/92a4ecf27301b886232a413360f6b348a81d55ffef654f2ebda5970ebc3d/rpds_py-2026.9.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:46d80bc76b51a6c24f9944368c28d38b8bcbcea1da4f2f8d3ebc31a67e8c6ec6", size = 578509, upload-time = "2026-10-04T16:29:33.01Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/84/1700cc748d0eaa747486e4e82882d2575224e6e9a3148df583058850c629/rpds_py-2026.9.1-cp312-cp312-win_amd64.whl", hash = "sha256:5ce8943f79c2210f7abcc28e86367b03b28d95027fd01c46d2472373ae70c86f", size = 222923, upload-time = "2026-10-04T16:29:35.709Z" },
+    { url = "https://files.pythonhosted.org/packages/32/c3/bb59ba16a6b4a57995d15b8c04c00f28df3b938c4dcdde48fbe0f73edb0c/rpds_py-2026.9.1-pp312-pypy312_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d1028417bb44037eb3069c1009bd7b7277212876cda22fbe565b0bca9fab6d2c", size = 380748, upload-time = "2026-10-04T16:32:17.727Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/a5/9672e532fe02cd3b92c78cfd8743abca939d96853006c63835009a1ecb6f/rpds_py-2026.9.1-pp312-pypy312_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:6b9bf3135b4ad5981df9a73d71a35272d650a2985ae9c2746357b24d59de2448", size = 591126, upload-time = "2026-10-04T16:32:29.274Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/55/4b2fa381a583760aea5c92841e4e928a358e1c6511b129219e9c2826a226/rpds_py-2026.9.1-pp312-pypy312_pp80-macosx_11_0_arm64.whl", hash = "sha256:b242c27c8f836305a4a72df9cdd564386ac57b807bd252a063223331c9316b37", size = 346877, upload-time = "2026-10-04T16:32:34.061Z" },
 ]
 
 [[package]]
@@ -1793,6 +2224,19 @@ wheels = [
 ]
 
 [[package]]
+name = "segments"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "csvw", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "regex", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8b/57/85cac3a8e32370e88fa5fa92812edb6025db7fcbed51452bd56ee1524957/segments-2.4.0.tar.gz", hash = "sha256:bba71f5520ddd54c8aa2f4d765a60618c6862162d6e7356a4a097f2223166f5b", size = 18662, upload-time = "2026-03-07T10:01:28.925Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/60/eef9acce946177f92c9aabf432224d87ab908bafafac516a36ab924199f3/segments-2.4.0-py2.py3-none-any.whl", hash = "sha256:4021dc67f201cc03c864c74c618bdb163b1af629da3040babbaa37d8813f3db0", size = 16321, upload-time = "2026-03-07T10:01:27.885Z" },
+]
+
+[[package]]
 name = "semver"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1857,6 +2301,18 @@ wheels = [
 ]
 
 [[package]]
+name = "smart-open"
+version = "8.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "wrapt", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/e3/1fb5c310b1f55d99ba51cb81b8f1a0e4b5f89be44de69405aeeb12814778/smart_open-8.0.4.tar.gz", hash = "sha256:8cff8321f0b0ae4bd9cb0cd0c507c135ad6aa980171248fca520b645fd6ff717", size = 62316, upload-time = "2026-10-17T19:34:45.106Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/6d/3a95e71d597ee03b3ddcf0ff154f2841b84d8724df2bb35a350493793ae9/smart_open-8.0.4-py3-none-any.whl", hash = "sha256:8a3a67679942fa40d1a93ed3aea37619b4b4ec5458f1d5a9228dfc301db11b4c", size = 73881, upload-time = "2026-10-17T19:34:43.624Z" },
+]
+
+[[package]]
 name = "sortedcontainers"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1894,6 +2350,75 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/03/dc/200013a74641f8774664bbcd2346c695c05c2e300ea792adcb40a293eed0/soxr-1.1.0-cp312-abi3-macosx_11_0_arm64.whl", hash = "sha256:d6a7ad82b8d5f3fcc04b1d2ca055562b96af571e1d4fa7c6c61d0fb509ac43b4", size = 165457, upload-time = "2026-05-03T00:14:56.007Z" },
     { url = "https://files.pythonhosted.org/packages/5c/f1/0e55195893228609c9a08c3b13b7a83a46c3a992cd00d3304f0f320cfb07/soxr-1.1.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3b033078e86f3c4a658e5697fac8995764fad9e799563616b630136b613167f1", size = 240413, upload-time = "2026-05-03T00:14:59.363Z" },
     { url = "https://files.pythonhosted.org/packages/b0/4d/621e4150e4815246ad552d215a8a294a90143fedd19ee442cf82d3b3abc8/soxr-1.1.0-cp312-abi3-win_amd64.whl", hash = "sha256:6ae2a174bffea94e8ead857dad85999d3f49f091774dbad5b046c0417d7092f4", size = 174357, upload-time = "2026-05-03T00:15:00.724Z" },
+]
+
+[[package]]
+name = "spacy"
+version = "3.8.16"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "catalogue", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "click", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "confection", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "cymem", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "jinja2", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "murmurhash", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "numpy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "packaging", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "preshed", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pydantic", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "requests", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "setuptools", version = "84.2.1", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "spacy-legacy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "spacy-loggers", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "srsly", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "thinc", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "tqdm", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "typer", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "wasabi", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "weasel", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/69/5d/b0b4cd2f6e8a0470e50f7f0cfc1cea6e2f25572e97fb5d404c7941d5e88a/spacy-3.8.16.tar.gz", hash = "sha256:a3d19da23637cc396b42d22fc33852680f675d8ddcb847d3e2a0d094712d1794", size = 1330989, upload-time = "2026-08-24T10:05:57.936Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/1e/247e43597b10576eccfed55af7999663f00ae934394acebef724cabdc1b7/spacy-3.8.16-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:44a641085abbe3a09ea56a89f2e50b5f51aea6cf69213b70305fb48e341b883b", size = 6460523, upload-time = "2026-08-24T10:04:40.873Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/9c/3b5d64a72ac40cf584134c6639ac67f8f2d504eb081c91da3ad2ffae5c04/spacy-3.8.16-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8d0f63c3124d0a34a37e9b519d004cee1269744be07f91f843902e6c9f3e557a", size = 35496883, upload-time = "2026-08-24T10:04:48.383Z" },
+    { url = "https://files.pythonhosted.org/packages/32/dd/eeaf28004591f0d282da809194d9f7bfb6a1c0626ca0d7d69e8b5436751f/spacy-3.8.16-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:2810fd2ce41f6a8dde62642dad0d11fd9db7cb6a1cd40b1c8b70a01586e6ff9f", size = 36028110, upload-time = "2026-08-24T10:04:56.874Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/c0/4122fa6c3670d504ad5a3094c9b512f0d0908f66cefeb8c8c3349f8c6a28/spacy-3.8.16-cp312-cp312-win_amd64.whl", hash = "sha256:5991c334e71c23b798c25e0d403295dde4d2d1fb58c2e075450b964db03c05ea", size = 15180961, upload-time = "2026-08-24T10:05:00.437Z" },
+]
+
+[[package]]
+name = "spacy-curated-transformers"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "curated-tokenizers", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "curated-transformers", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-14-cadence-reader-gpu' and extra != 'group-14-cadence-reader-cpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra != 'extra-14-cadence-reader-gpu' and extra != 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'group-14-cadence-reader-cpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "torch", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu') or (platform_machine == 'AMD64' and sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu') or (sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d8/b3/a4fd3cf28008cbe1d95463b5c76a0d9c8da7b9ad4f06289c2be4aae62052/spacy_curated_transformers-0.3.1.tar.gz", hash = "sha256:7e53fccf64260e641b0a3f2b65b6d98381b86cef6eeb21ce279e8db849e8525d", size = 218990, upload-time = "2025-05-28T10:29:32.69Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/d8/f053d43125ae4ad14f3e2a12a475a656128233f1f40a272c6e09a05c73e8/spacy_curated_transformers-0.3.1-py2.py3-none-any.whl", hash = "sha256:503559b6a1d6e44ec2c978e18ed871ce5c3d56871dc9216c0e1523428204e610", size = 237943, upload-time = "2025-05-28T10:29:31.058Z" },
+]
+
+[[package]]
+name = "spacy-legacy"
+version = "3.0.12"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/79/91f9d7cc8db5642acad830dcc4b49ba65a7790152832c4eceb305e46d681/spacy-legacy-3.0.12.tar.gz", hash = "sha256:b37d6e0c9b6e1d7ca1cf5bc7152ab64a4c4671f59c85adaf7a3fcb870357a774", size = 23806, upload-time = "2023-01-23T09:04:15.104Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c3/55/12e842c70ff8828e34e543a2c7176dac4da006ca6901c9e8b43efab8bc6b/spacy_legacy-3.0.12-py2.py3-none-any.whl", hash = "sha256:476e3bd0d05f8c339ed60f40986c07387c0a71479245d6d0f4298dbd52cda55f", size = 29971, upload-time = "2023-01-23T09:04:13.45Z" },
+]
+
+[[package]]
+name = "spacy-loggers"
+version = "1.0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/3d/926db774c9c98acf66cb4ed7faf6c377746f3e00b84b700d0868b95d0712/spacy-loggers-1.0.5.tar.gz", hash = "sha256:d60b0bdbf915a60e516cc2e653baeff946f0cfc461b452d11a4d5458c6fe5f24", size = 20811, upload-time = "2023-09-11T12:26:52.323Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/78/d1a1a026ef3af911159398c939b1509d5c36fe524c7b644f34a5146c4e16/spacy_loggers-1.0.5-py3-none-any.whl", hash = "sha256:196284c9c446cc0cdb944005384270d775fdeaf4f494d8e269466cfa497ef645", size = 22343, upload-time = "2023-09-11T12:26:50.586Z" },
 ]
 
 [[package]]
@@ -1937,6 +2462,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b5/5e/d9330f73b6e39f08baed5bd6ea410fd8ee78b8bb1549d0d6a5f555a73db5/sqlalchemy-2.1.6-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:9b197f5d2bcd61b939d2f04b77e86ef24bda266518f3e1526bf666deb20d3ddd", size = 4676118, upload-time = "2026-10-21T19:14:04.705Z" },
     { url = "https://files.pythonhosted.org/packages/06/ee/5609e83ebc921663b3250d053a61b355db72ad3cbbde73e7105024e8bf10/sqlalchemy-2.1.6-cp312-cp312-win_amd64.whl", hash = "sha256:7ea80b33e57f918509eb91cd074324bff0f9aae40d238121cdc369f449c20649", size = 2437524, upload-time = "2026-10-21T17:08:15.047Z" },
     { url = "https://files.pythonhosted.org/packages/c1/69/c75534e336b06b3fd3f76de73d89736510800e60c77c58d4e4ce18389018/sqlalchemy-2.1.6-py3-none-any.whl", hash = "sha256:106878cf3795cd3d357e2e858609f9e44f20f19b2d8e48a3532bef3f90b03fbe", size = 2063055, upload-time = "2026-10-21T18:42:10.234Z" },
+]
+
+[[package]]
+name = "srsly"
+version = "2.5.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "catalogue", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/88/f5/f7d44c3ae5c6c505156992461d5fcedc4bbcb13c9c433f71796b76e481d9/srsly-2.5.5.tar.gz", hash = "sha256:099dbddf9e5aa934221492f520773ab7e473de85dc29226356cbddf052d56278", size = 510955, upload-time = "2026-10-25T00:03:08.692Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/18/c26a2ff36c0f9197907bd5e9b9b58da91eb3adef664af98502d4d4325e5d/srsly-2.5.5-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:9e7fab7290becbedc4506eaa1ab2c30a39c4cd16c56d3858065e349dc7de896e", size = 686963, upload-time = "2026-10-25T00:01:49.638Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/af/d43fa232620557975de47dfb1305cfd0c7ba515d8c0ac5d700c603081b1d/srsly-2.5.5-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:5363dea121606895d2c4ad0b8432f6fd7ec1ed38ae15bf960ae0254cb38796a1", size = 1246996, upload-time = "2026-10-25T00:01:52.433Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/f6/b8c62175119d4c33999d8ace1e4ed181453d2f20cb6144dc9cb54956e8a1/srsly-2.5.5-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:c25b58d9ff4f2ead718505fd4e69f2dd7b55ad34b08241794d1f3c61f0b58b63", size = 1206063, upload-time = "2026-10-25T00:01:55.427Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/2c/83a3786e5b08e0ec5d1bef54709ecb78c7a56c6bf4463cb8405a4b88f165/srsly-2.5.5-cp312-cp312-win_amd64.whl", hash = "sha256:20c5d0c05f37b5fa0b998498c77ddbc8072d91db11e1f988f3820f955bfb75d2", size = 675790, upload-time = "2026-10-25T00:01:56.799Z" },
 ]
 
 [[package]]
@@ -1986,6 +2526,42 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/48/a9/fc520ea91ab1f3ba51cbf3fe24f2b6364ed3b49046969e0868d46d6da372/tensorboardx-2.6.5.tar.gz", hash = "sha256:ca176db3997ee8c07d2eb77381225956a3fd1c10c91beafab1f17069adc47017", size = 4770195, upload-time = "2026-04-03T15:40:23.803Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/87/0f/69fbab4c30b2f3a76e6de67585ea72a8eccf381751f5c0046b966fde9658/tensorboardx-2.6.5-py3-none-any.whl", hash = "sha256:c10b891d00af306537cb8b58a039b2ba41571f0da06f433a41c4ca8d6abe1373", size = 87510, upload-time = "2026-04-03T15:40:22.111Z" },
+]
+
+[[package]]
+name = "termcolor"
+version = "3.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/79/cf31d7a93a8fdc6aa0fbb665be84426a8c5a557d9240b6239e9e11e35fc5/termcolor-3.3.0.tar.gz", hash = "sha256:348871ca648ec6a9a983a13ab626c0acce02f515b9e1983332b17af7979521c5", size = 14434, upload-time = "2025-12-29T12:55:21.882Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/d1/8bb87d21e9aeb323cc03034f5eaf2c8f69841e40e4853c2627edf8111ed3/termcolor-3.3.0-py3-none-any.whl", hash = "sha256:cf642efadaf0a8ebbbf4bc7a31cec2f9b5f21a9f726f4ccbb08192c9c26f43a5", size = 7734, upload-time = "2025-12-29T12:55:20.718Z" },
+]
+
+[[package]]
+name = "thinc"
+version = "8.3.13"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "blis", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "catalogue", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "confection", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "cymem", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "murmurhash", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "numpy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "packaging", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "preshed", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pydantic", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "setuptools", version = "81.0.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "setuptools", version = "84.2.1", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "srsly", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "wasabi", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/13/46/76df95f2c327f9a9cef30c1523bf285627897097163584dcf5f77b2ebce2/thinc-8.3.13.tar.gz", hash = "sha256:68e658549fc1eb3ff92aed5147fcbb9c15d6e9cc0e623b4d0998d16522ffb4f9", size = 194640, upload-time = "2026-03-23T07:22:36.41Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/45/8f/69d7338575d98df85d0b54c0f5fc277dba72587fe9ab846ecdd12a998bcb/thinc-8.3.13-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:3710d318b4e5460cf366a6f7b5ddbefb5d39dbd4cfa408222750fdc6c27c4411", size = 791932, upload-time = "2026-03-23T07:21:58.38Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/ff/6914bf370bd1d604d89e6dfb46b97d10cd9b00d42ff8c036283e92314a8c/thinc-8.3.13-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4b5ec9ff313819e7d8667794a3559463fa89ff45aaa73e3fd8d6273b1e0d7a7f", size = 3903307, upload-time = "2026-03-23T07:22:01.652Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/f0/a8d77c7bac089697c6df302cc3c936a1ab36a4720deae889e6f1dbcbd0eb/thinc-8.3.13-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:79a29a44d76bd02f5ac0624268c6e42b3576ae472c791a8ae9c2d813ae789b59", size = 5033398, upload-time = "2026-03-23T07:22:05.045Z" },
+    { url = "https://files.pythonhosted.org/packages/21/82/5651bb1f904d04220fc7670035ada921bf0638e2cff6444d67c12887a968/thinc-8.3.13-cp312-cp312-win_amd64.whl", hash = "sha256:ed1dc709ac4f2f03b710457889e4e02f05de51bc8456980c241d0b28798bc7cb", size = 1721248, upload-time = "2026-03-23T07:22:06.749Z" },
 ]
 
 [[package]]
@@ -2290,12 +2866,33 @@ wheels = [
 ]
 
 [[package]]
+name = "typing-inspection"
+version = "0.4.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/26/b09b8010994eccc3c09092e6b34058f36a460eea2d4c3e8b910c695975a0/typing_inspection-0.4.4.tar.gz", hash = "sha256:547274fa6b0a561ccf549cc9524b999a578e737d015d8709d021f9d0d13bea47", size = 76928, upload-time = "2026-08-12T12:37:25.997Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/67/81/4add07e5172b7ac40d8ed5ff580409a7801a4fe26d529bdd915401dabfbe/typing_inspection-0.4.4-py3-none-any.whl", hash = "sha256:65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147", size = 14750, upload-time = "2026-08-12T12:37:24.648Z" },
+]
+
+[[package]]
 name = "tzdata"
 version = "2026.5"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d9/68/f1b440335057bfce71b6e50a9d09445aa2ecbd08359a337976627b8409e7/tzdata-2026.5.tar.gz", hash = "sha256:8cc73c0a0bfca7dbfa59235d60b2eff82231dee33f53d206db1acd9173cfc0a7", size = 200404, upload-time = "2026-10-03T09:23:14.143Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/94/21/1e5995a1c920cce14e4bffae20c665ec10e7ed03ab25e006cd741092b718/tzdata-2026.5-py2.py3-none-any.whl", hash = "sha256:b683bd1b6659ddcd810ff02ad09ba821d4bf1065072805063eb35c49617905ac", size = 347996, upload-time = "2026-10-03T09:23:12.535Z" },
+]
+
+[[package]]
+name = "uritemplate"
+version = "4.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/98/60/f174043244c5306c9988380d2cb10009f91563fc4b31293d27e17201af56/uritemplate-4.2.0.tar.gz", hash = "sha256:480c2ed180878955863323eea31b0ede668795de182617fef9c6ca09e6ec9d0e", size = 33267, upload-time = "2025-06-02T15:12:06.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/99/3ae339466c9183ea5b8ae87b34c0b897eda475d2aec2307cae60e5cd4f29/uritemplate-4.2.0-py3-none-any.whl", hash = "sha256:962201ba1c4edcab02e60f9a0d3821e82dfc5d2d6662a21abd533879bdb8a686", size = 11488, upload-time = "2025-06-02T15:12:03.405Z" },
 ]
 
 [[package]]
@@ -2324,6 +2921,18 @@ wheels = [
 ]
 
 [[package]]
+name = "wasabi"
+version = "1.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ac/f9/054e6e2f1071e963b5e746b48d1e3727470b2a490834d18ad92364929db3/wasabi-1.1.3.tar.gz", hash = "sha256:4bb3008f003809db0c3e28b4daf20906ea871a2bb43f9914197d540f4f2e0878", size = 30391, upload-time = "2024-05-31T16:56:18.99Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/7c/34330a89da55610daa5f245ddce5aab81244321101614751e7537f125133/wasabi-1.1.3-py3-none-any.whl", hash = "sha256:f76e16e8f7e79f8c4c8be49b4024ac725713ab10cd7f19350ad18a8e3f71728c", size = 27880, upload-time = "2024-05-31T16:56:16.699Z" },
+]
+
+[[package]]
 name = "watchfiles"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2336,6 +2945,26 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/8a/cf/e3ad894ed5909a7c44b0707e89bc25d19a3d78b3a7aec846119443b6ae56/watchfiles-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b5768b49e426fd5b550b012c866db347cdf15c398ef98dc557b6e6b72fa74cd1", size = 458353, upload-time = "2026-09-21T09:08:23.7Z" },
     { url = "https://files.pythonhosted.org/packages/48/64/db4a4684275fe9b696ee5118c194705c1423b3d42181c3f8ee70194d5c73/watchfiles-1.3.0-cp310-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:380f513d26cc2e598266b88d66456e07d67ef4be8f0f435a1154d9c44b43d509", size = 661723, upload-time = "2026-09-21T09:08:28.004Z" },
     { url = "https://files.pythonhosted.org/packages/48/a1/1c4a1b3c8030cd03206232612be8a6e8799093490c220b0fcb935d02b75a/watchfiles-1.3.0-cp310-abi3-win_amd64.whl", hash = "sha256:1acabde19b67e673274e89a04d613b7fb1f122e2c4b8ec9a581e59c149264b61", size = 290643, upload-time = "2026-09-21T09:08:30.45Z" },
+]
+
+[[package]]
+name = "weasel"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cloudpathlib", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "confection", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "httpx", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "packaging", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pydantic", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "smart-open", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "srsly", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "typer", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "wasabi", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ce/e5/e272bb9a045105a1fdf4b798d8086f5932a178f4d738f17a74f5c9e0ae9a/weasel-1.0.0.tar.gz", hash = "sha256:7b129b44c90cc543b760532974ca1e4eb30dad2aa2026f57bdce66354ae610fc", size = 38682, upload-time = "2026-03-20T08:10:25.266Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0a/07/57ebf7a6798b016c064bd0ca81b4c6a99daa4dc377b898bc7b41eb6b5af0/weasel-1.0.0-py3-none-any.whl", hash = "sha256:89518acee027f49d743126c3502d35e6dd14f5768be5c37c9af47c171b6005cc", size = 50713, upload-time = "2026-03-20T08:10:23.637Z" },
 ]
 
 [[package]]
@@ -2360,6 +2989,28 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bf/3b/f5a2e38c24df4aee9b3c9c99bc91de6a4b85d49bc53fa67adb8b765902c2/whisperx-3.3.1-py3-none-any.whl", hash = "sha256:974b2994b5a95166c664066489d6d46f34f01273272e42a933f81e4df8986819", size = 16478310, upload-time = "2025-01-08T17:01:48.033Z" },
+]
+
+[[package]]
+name = "win32-setctime"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/e4/f0f252c65f9bf7c4042b1f707ef338d49f799da582234e1d3e6e2cfca291/win32_setctime-1.2.1.tar.gz", hash = "sha256:077b35471bf1ff1d71e165c919ddc0cecf51b8e1802f5d820d33a96e2f6717dd", size = 4983, upload-time = "2026-10-25T18:21:32.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/df/5593480bc1e932eeae28e4fa182ab68174edd0d77409ced3b6491d02d1d5/win32_setctime-1.2.1-py3-none-any.whl", hash = "sha256:a9edc685b35414bec69392c866ed82456ad125ac4a6a4b703ec1d8b462d4f477", size = 4215, upload-time = "2026-10-25T18:21:30.939Z" },
+]
+
+[[package]]
+name = "wrapt"
+version = "2.5.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/22/89e2f3bdae5cb34e0cab0cd86d7172dbf418de4b46c9b17b9c7a560dfa44/wrapt-2.5.1.tar.gz", hash = "sha256:f595bb0185aab3e9dc31950c95d914f56ea8278810c3b928f3426e12ed6d27bc", size = 184455, upload-time = "2026-10-14T00:39:39.24Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/b0/335b0af2930938678fcde954b29780b26308961b93df5e0192fc182e8b7e/wrapt-2.5.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:c44dd9881626da7d621c23805f26726f6b023cf3e9755f48d092bc9cbef4a8e7", size = 106087, upload-time = "2026-10-14T00:37:20.392Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/5a/2a34ba5a468e9d3d6e5b0733280e1ae3c850bfc5f1d681fc0e97f564d1f2/wrapt-2.5.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:bfaa998ceeea4d0aa72b40cdd0023d19409504e244b439ff2aa9f01729341c5f", size = 250438, upload-time = "2026-10-14T00:37:21.882Z" },
+    { url = "https://files.pythonhosted.org/packages/91/e3/c00401bcc3485eb9937c3fe4a1cc8fc3b61800b1378ea3a143ea1c30f6f6/wrapt-2.5.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:29b62e87fcd6a1893f669abfd02a596a7fc5cfa79fa57e42c4e650a6c170c67b", size = 238843, upload-time = "2026-10-14T00:37:30.075Z" },
+    { url = "https://files.pythonhosted.org/packages/22/d5/39d5a704650f18799f37841442b464edb81cf2015f006eaef26068acc6ea/wrapt-2.5.1-cp312-cp312-win_amd64.whl", hash = "sha256:c39c7130ea0702c4ab0faf12da1df1e02d5174305c17edf02309e2f058c4114f", size = 106048, upload-time = "2026-10-14T00:37:33.188Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/0c/7da7513ddcc8f1d831ec4bfbedc9f7f174ecb91042bc16916fc1e0d06b22/wrapt-2.5.1-py3-none-any.whl", hash = "sha256:c6e6c226b1ca5402d7ae5fb34a0d21f1b49124fe4200e5884d1e19e53c47ac1d", size = 81849, upload-time = "2026-10-14T00:39:37.441Z" },
 ]
 
 [[package]]

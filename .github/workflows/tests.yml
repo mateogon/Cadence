@@ -12,6 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        profile: [base, kokoro]
     runs-on: ${{ matrix.os }}
     env:
       QT_QPA_PLATFORM: ${{ matrix.os == 'windows-latest' && 'minimal' || 'offscreen' }}
@@ -40,16 +41,26 @@ jobs:
             libxcb-cursor0
 
       - name: Install complete locked environment
-        run: uv sync --locked
+        run: uv sync --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }}
 
       - name: Check runtime imports
-        run: uv run python -c "import torch, torchaudio, whisperx, onnxruntime, supertonic; from whisperx.asr import load_model; print('torch', torch.__version__, 'torchaudio', torchaudio.__version__); print('ONNX providers', onnxruntime.get_available_providers())"
+        run: uv run --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }} python -c "import torch, torchaudio, whisperx, onnxruntime, supertonic; from whisperx.asr import load_model; print('torch', torch.__version__, 'torchaudio', torchaudio.__version__); print('ONNX providers', onnxruntime.get_available_providers())"
+
+      - name: Check default dependency isolation
+        if: matrix.profile == 'base'
+        run: |
+          uv run --locked python -c "import importlib.util; assert importlib.util.find_spec('kokoro') is None"
+          uv run --locked main.py --help
+
+      - name: Check Kokoro pipeline and English tokenizer
+        if: matrix.profile == 'kokoro'
+        run: uv run --locked --extra kokoro python -c "from kokoro import KPipeline; import en_core_web_sm; nlp = en_core_web_sm.load(); tokens = [token.text for token in nlp('Cadence reads books aloud.')]; assert tokens == ['Cadence', 'reads', 'books', 'aloud', '.']; pipeline = KPipeline(lang_code='a', model=False, repo_id='hexgrad/Kokoro-82M'); results = list(pipeline('Hello world.', voice=None)); assert results and any(result.phonemes for result in results); assert all(result.audio is None for result in results); print('tokens', tokens); print('phonemes', ascii([result.phonemes for result in results]))"
 
       - name: Run lint
-        run: uv run ruff check .
+        run: uv run --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }} ruff check .
 
       - name: Run type check
-        run: uv run mypy --config-file mypy.ini system/runtime_settings.py
+        run: uv run --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }} mypy --config-file mypy.ini system/runtime_settings.py
 
       - name: Run tests
-        run: uv run pytest -q tests/unit tests/service tests/integration tests/ui
+        run: uv run --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }} pytest -q tests/unit tests/service tests/integration tests/ui

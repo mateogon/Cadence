@@ -25,7 +25,10 @@ uv run ruff check .
 uv run mypy --config-file mypy.ini system/runtime_settings.py
 uv run pytest -q tests/unit tests/service tests/integration tests/ui
 ```
-CI performs a complete `uv sync --locked` on Ubuntu, Windows, and macOS before these checks.
+CI runs the base and optional Kokoro profiles on Ubuntu, Windows, and macOS.
+To test Kokoro locally, add `--extra kokoro` to each `uv sync` and `uv run`.
+The base profile checks that Cadence starts without Kokoro. The optional profile
+checks the real English tokenizer without downloading the TTS model.
 
 Optional real E2E test:
 ```powershell

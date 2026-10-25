@@ -300,6 +300,8 @@ class RuntimeSettingsDialog(QtWidgets.QDialog):
 
         settings = load_settings()
         select_options = {
+            "CADENCE_TTS_BACKEND": ["supertonic", "kokoro"],
+            "CADENCE_KOKORO_DEVICE": ["auto", "cpu", "cuda", "mps"],
             "CADENCE_TTS_MODEL": ["supertonic-3", "supertonic-2", "supertonic"],
             "CADENCE_STYLE_PROFILE": sorted(STYLE_PROFILES.keys()),
             "CADENCE_FORCE_CPU": ["0", "1"],
@@ -1647,8 +1649,7 @@ class MainWindow(QtWidgets.QMainWindow):
         controls_layout.addWidget(voice_lbl)
 
         self.voice_combo = QtWidgets.QComboBox()
-        self.voice_combo.addItems(["M3", "M1", "F1", "F3"])
-        self.voice_combo.setCurrentText("M3")
+        self._refresh_voice_options()
         controls_layout.addWidget(self.voice_combo)
 
         side.addWidget(controls_card, 0)
@@ -2947,7 +2948,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 "No stored source file was found for this book.",
             )
             return
-        voice = book.get("voice", self.voice_combo.currentText() or "M3")
+        voice = book.get("voice") or self.voice_combo.currentText() or "M3"
         self.log(f"--- Continuing Import: {book.get('title', 'Unknown')} ---")
         self._start_import(stored_epub, voice)
 
@@ -3015,6 +3016,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self._apply_profile_header_theme()
         self._apply_player_settings()
 
+    def _refresh_voice_options(self):
+        previous = self.voice_combo.currentText()
+        if os.getenv("CADENCE_TTS_BACKEND", "supertonic") == "kokoro":
+            from adapters.kokoro_backend import KokoroBackend
+
+            voices = ["auto", *KokoroBackend().list_voices()]
+        else:
+            voices = ["M3", "M1", "F1", "F3"]
+        self.voice_combo.clear()
+        self.voice_combo.addItems(voices)
+        self.voice_combo.setCurrentText(previous if previous in voices else voices[0])
+
     def open_runtime_settings(self):
         prev_profile = self._style_profile
         dlg = RuntimeSettingsDialog(self)
@@ -3023,6 +3036,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if dlg.exec():
             requested = str(os.environ.get("CADENCE_STYLE_PROFILE", "cadence")).strip().lower() or "cadence"
             self._apply_style_profile(requested)
+            self._refresh_voice_options()
             self.log("Saved runtime settings to cadence_settings.json.")
             self.log(
                 "Note: running imports use new values immediately; existing loaded models may need restart."
