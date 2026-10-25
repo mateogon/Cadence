@@ -23,6 +23,7 @@ Cadence is an immersive reading pipeline: **book file -> chapter text -> audiobo
   - If `.wav` is missing, Cadence synthesizes first, then aligns.
   - If `.wav` and `.json` both exist, Cadence skips that chapter.
 - This makes resume robust after interruptions and enables immediate reading while import is still running.
+- Import reports success only when every chapter has non-empty audio and alignment. Failed chapters remain available for resume and the reader shows the import as incomplete.
 - Library cards update live with ready counts (`Audio x/y`, `Alignment x/y`) during import.
 - EPUB `dc:language` is saved in `metadata.json` and passed to Supertonic. Regional tags such as `es-CL` use their base code; missing or unsupported codes use `na`.
 - New books store `tts_backend` and `tts_model`. Resume uses the book's stored voice and model even if the current settings change.
@@ -113,8 +114,9 @@ distribution upstream, although both ONNX distributions expose the same API. The
 remove only that requirement. Cadence's selected profile supplies exactly one runtime.
 Use uv for installation; plain pip does not apply these overrides.
 
-Supertonic uses CPU by default on this Mac setup. On a 71-word Spanish chapter
-(M3 voice, 8 steps, speed 1.05, seed 42; 26.54 seconds of audio), CPU synthesis took
+Supertonic uses CPU by default on macOS. Measurements on an Apple M3 Pro used a
+71-word Spanish chapter (M3 voice, 8 steps, speed 1.05, seed 42; 26.54 seconds of audio).
+CPU synthesis took
 7.33–8.38 seconds over three runs (median 7.58). CoreML took 36.00 seconds on its
 first synthesis; its second had not finished after 140 seconds and was stopped.
 Model loading took 0.74 seconds for CPU and 10.66 seconds for CoreML.
@@ -122,6 +124,9 @@ These measurements apply to this chapter and machine. To try CoreML when availab
 set `CADENCE_USE_COREML=1` before starting Cadence; `CADENCE_FORCE_CPU=1` takes priority.
 
 WhisperX uses CPU with `int8` when CUDA is unavailable. Faster-whisper has no MPS backend.
+Cadence verifies the bundled VAD checkpoint hash and temporarily permits its known metadata classes during loading. Torch keeps `weights_only` loading enabled; no local wrapper is needed. External WhisperX environments must provide the pinned compatible dependencies and Torch 2.6 or newer.
+
+Calibre lookup uses `CADENCE_CALIBRE_PATH`, then `PATH`, the macOS app path, and the Windows default. An invalid explicit override fails instead of silently selecting another installation. Alignment uses `CADENCE_WHISPERX_PYTHON` first, then the running interpreter (`sys.executable`), `.venv`, and `venv`.
 To keep a separate WhisperX environment, set its interpreter before starting Cadence:
 ```powershell
 $env:CADENCE_WHISPERX_PYTHON="C:\path\to\venv_whisperx\Scripts\python.exe"
