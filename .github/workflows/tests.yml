@@ -44,7 +44,18 @@ jobs:
         run: uv sync --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }}
 
       - name: Check runtime imports
-        run: uv run --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }} python -c "import torch, torchaudio, whisperx, onnxruntime, supertonic; from whisperx.asr import load_model; print('torch', torch.__version__, 'torchaudio', torchaudio.__version__); print('ONNX providers', onnxruntime.get_available_providers())"
+        run: >-
+          uv run --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }}
+          python -c "import torch, torchaudio, torchvision, whisperx, onnxruntime, supertonic, numpy;
+          from whisperx.asr import load_model;
+          from pyannote.audio.core.io import Audio;
+          waveform = torch.zeros((1, 3200));
+          audio, rate = Audio(sample_rate=16000)({'waveform': waveform, 'sample_rate': 16000});
+          assert rate == 16000 and audio.shape == (1, 3200);
+          assert torch.from_numpy(numpy.zeros(5, dtype=numpy.float32)).numpy().shape == (5,);
+          print('torch', torch.__version__, 'torchaudio', torchaudio.__version__, 'torchvision', torchvision.__version__, 'numpy', numpy.__version__);
+          print('ONNX providers', onnxruntime.get_available_providers());
+          print('Pyannote waveform input accepted', tuple(audio.shape), rate)"
 
       - name: Check default dependency isolation
         if: matrix.profile == 'base'

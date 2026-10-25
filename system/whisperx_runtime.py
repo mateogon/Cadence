@@ -2,16 +2,18 @@
 
 from collections import defaultdict
 import hashlib
+from importlib.metadata import version
 import os
 from pathlib import Path
 from typing import Any
 
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
 import torch
 from torch.torch_version import TorchVersion
 import whisperx
-from whisperx import vad
 
-# Published in WhisperX 3.3.1's VAD_SEGMENTATION_URL and verified before loading.
+# WhisperX 3.8.6 bundles the same VAD checkpoint verified for 3.3.1.
 VAD_SHA256 = "0b5b3216d60a2d32fc086b47ea8c67589aaeb26b7e07fcbe620d6d0b83e209ea"
 
 
@@ -21,7 +23,13 @@ def load_whisperx_model(model_name, device, compute_type):
     if os.getenv("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "").lower() in ("1", "y", "yes", "true"):
         raise RuntimeError("Remove TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD to keep checkpoint loading restricted.")
 
-    checkpoint = Path(vad.__file__).parent / "assets" / "pytorch_model.bin"
+    # Later pyannote releases force weights_only=False inside their model loader.
+    if version("pyannote.audio") != "4.0.2":
+        raise RuntimeError("WhisperX alignment requires pyannote.audio==4.0.2 for restricted VAD loading.")
+
+    from whisperx.vads import pyannote as vad
+
+    checkpoint = Path(whisperx.__file__).parent / "assets" / "pytorch_model.bin"
     if hashlib.sha256(checkpoint.read_bytes()).hexdigest() != VAD_SHA256:
         raise RuntimeError(f"WhisperX VAD checkpoint SHA256 does not match the trusted model: {checkpoint}")
 
