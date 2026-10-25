@@ -1,6 +1,7 @@
 import sys
 import types
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 
@@ -60,6 +61,7 @@ def test_get_calibre_executable_uses_default_path(monkeypatch, tmp_path):
     calibre = tmp_path / "ebook-convert.exe"
     calibre.write_text("bin", encoding="utf-8")
     monkeypatch.setattr("system.book_manager.CALIBRE_PATH", str(calibre))
+    monkeypatch.setattr("system.book_manager.MAC_CALIBRE_PATH", str(tmp_path / "missing-mac"))
     monkeypatch.setattr("system.book_manager.shutil.which", lambda _name: None)
     assert BookManager._get_calibre_executable() == str(calibre)
 
@@ -648,3 +650,63 @@ def test_finalize_metadata_requires_audio_for_aligned_chapter(tmp_path):
 
     assert metadata["status"] == "text_only"
     assert metadata["last_chapter"] == 0
+
+
+@pytest.mark.parametrize(
+    ("available", "override", "expected"),
+    [
+        ({"override", "path", "mac", "windows"}, True, "override"),
+        ({"path", "mac", "windows"}, False, "path"),
+        ({"mac", "windows"}, False, "mac"),
+        ({"windows"}, False, "windows"),
+        (set(), False, None),
+    ],
+)
+def test_get_calibre_executable_search_order(tmp_path, monkeypatch, available, override, expected):
+    paths = {name: tmp_path / name / "ebook-convert" for name in ("override", "path", "mac", "windows")}
+    for name in available:
+        paths[name].parent.mkdir()
+        paths[name].write_text("executable", encoding="utf-8")
+    monkeypatch.setenv("CADENCE_CALIBRE_PATH", str(paths["override"]) if override else "")
+    monkeypatch.setattr("system.book_manager.CALIBRE_PATH", str(paths["windows"]))
+    monkeypatch.setattr("system.book_manager.MAC_CALIBRE_PATH", str(paths["mac"]), raising=False)
+    monkeypatch.setattr(
+        "system.book_manager.shutil.which",
+        lambda name: str(paths["path"]) if name == "ebook-convert" and "path" in available else None,
+    )
+
+    assert BookManager._get_calibre_executable() == (str(paths[expected]) if expected else None)
+
+
+@pytest.mark.parametrize("platform", ["posix", "nt"])
+@pytest.mark.parametrize(
+    ("available", "override", "expected"),
+    [
+        ({"running", ".venv", "venv"}, True, "override"),
+        ({"running", ".venv", "venv"}, False, "running"),
+        ({".venv", "venv"}, False, ".venv"),
+        ({"venv"}, False, "venv"),
+        (set(), False, None),
+    ],
+)
+def test_get_whisperx_python_search_order(tmp_path, monkeypatch, platform, available, override, expected):
+    interpreter = ("Scripts", "python.exe") if platform == "nt" else ("bin", "python")
+    paths = {
+        "running": tmp_path / "external-env" / "python",
+        ".venv": tmp_path / ".venv" / Path(*interpreter),
+        "venv": tmp_path / "venv" / Path(*interpreter),
+        "override": tmp_path / "separate-whisperx-env" / "python",
+    }
+    for name in available:
+        paths[name].parent.mkdir(parents=True)
+        paths[name].write_text("executable", encoding="utf-8")
+    settings = {"CADENCE_WHISPERX_PYTHON": str(paths["override"]) if override else ""}
+    monkeypatch.setattr("system.book_manager.__file__", str(tmp_path / "system" / "book_manager.py"))
+    monkeypatch.setattr("system.book_manager.os", types.SimpleNamespace(name=platform, getenv=settings.get))
+    monkeypatch.setattr("system.book_manager.sys", types.SimpleNamespace(executable=str(paths["running"])))
+
+    if expected is None:
+        with pytest.raises(FileNotFoundError, match="CADENCE_WHISPERX_PYTHON"):
+            BookManager._get_whisperx_python()
+    else:
+        assert BookManager._get_whisperx_python() == str(paths[expected])

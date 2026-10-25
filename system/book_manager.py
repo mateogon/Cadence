@@ -14,6 +14,7 @@ from pathlib import Path
 # Default Calibre CLI location on Windows. A custom path can be supplied via
 # CADENCE_CALIBRE_PATH (absolute path or command name).
 CALIBRE_PATH = r"C:\Program Files\Calibre2\ebook-convert.exe"
+MAC_CALIBRE_PATH = "/Applications/calibre.app/Contents/MacOS/ebook-convert"
 LIBRARY_PATH = Path("library")
 LIBRARY_PATH.mkdir(exist_ok=True)
 
@@ -180,13 +181,12 @@ class BookManager:
             resolved = shutil.which(configured)
             return resolved if resolved else None
 
-        default_path = Path(CALIBRE_PATH)
-        if default_path.exists():
-            return str(default_path)
-
         resolved = shutil.which("ebook-convert")
         if resolved:
             return resolved
+        for candidate in (MAC_CALIBRE_PATH, CALIBRE_PATH):
+            if Path(candidate).exists():
+                return str(candidate)
         return None
 
     @staticmethod
@@ -320,16 +320,18 @@ class BookManager:
         env_value = os.getenv("CADENCE_WHISPERX_PYTHON", "").strip()
         if env_value:
             return env_value
-        # Prefer project-local venv Python so alignment does not accidentally run
-        # in conda base/system Python.
         project_root = Path(__file__).resolve().parent.parent
-        if os.name == "nt":
-            candidate = project_root / "venv" / "Scripts" / "python.exe"
-        else:
-            candidate = project_root / "venv" / "bin" / "python"
-        if candidate.exists():
-            return str(candidate)
-        return sys.executable
+        interpreter = ("Scripts", "python.exe") if os.name == "nt" else ("bin", "python")
+        candidates = [sys.executable] + [
+            project_root / environment / Path(*interpreter)
+            for environment in (".venv", "venv")
+        ]
+        for candidate in candidates:
+            if candidate and Path(candidate).is_file():
+                return str(candidate)
+        raise FileNotFoundError(
+            "No Python interpreter found for WhisperX. Set CADENCE_WHISPERX_PYTHON."
+        )
 
     @staticmethod
     def get_books():
