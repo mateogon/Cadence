@@ -31,7 +31,12 @@ def test_benchmark_help_works_from_unrelated_directory(tmp_path):
     assert "--output" in result.stdout
 
 
-def test_benchmark_times_only_production_synthesis(benchmark, monkeypatch, tmp_path):
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_benchmark_times_only_production_synthesis(benchmark, monkeypatch, tmp_path, newline):
+    canonical_source = benchmark.FIXTURE.read_text(encoding="utf-8")
+    fixture = tmp_path / "fixture.txt"
+    fixture.write_bytes(canonical_source.replace("\n", newline).encode("utf-8"))
+    monkeypatch.setattr(benchmark, "FIXTURE", fixture)
     events = []
     calls = []
 
@@ -84,7 +89,7 @@ def test_benchmark_times_only_production_synthesis(benchmark, monkeypatch, tmp_p
     assert result["realtime_speedup"] == 0.15
     assert result["input_blocks"] == 20
     assert result["speed"] == 1.05
-    assert len(result["source_sha256"]) == 64
+    assert result["source_sha256"] == "2ef93dc45946a57590cb67f27799701712104380f0890ce017e95513abbe2f5e"
 
 
 def test_fixed_fixture_preserves_exact_twenty_production_blocks(benchmark):

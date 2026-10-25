@@ -29,7 +29,8 @@ def run_benchmark():
 
     from adapters.kokoro_backend import SAMPLE_RATE, KokoroBackend
 
-    source = FIXTURE.read_bytes()
+    # Normalize checkout line endings so Windows measures and hashes the same input.
+    source = FIXTURE.read_text(encoding="utf-8").encode("utf-8")
     text = source.decode("utf-8").strip()
     blocks = text.split("\n\n")
     if len(blocks) != 20:
