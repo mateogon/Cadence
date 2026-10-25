@@ -1,40 +1,37 @@
 # Contributing to Cadence
 
 ## Prerequisites
-- Python 3.12
-- Windows 10/11 for full runtime validation
-- Calibre (`ebook-convert`) and FFmpeg for end-to-end local testing
+- Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+- Apple Silicon macOS, Windows x64, or Linux x64 for runtime validation.
+- Calibre (`ebook-convert`) and FFmpeg for end-to-end local testing.
 
 ## Local Setup
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
-pip install -r requirements-gpu.txt
+```bash
+uv sync --locked
 ```
-
-For CPU-only development:
-```powershell
-pip install -r requirements-cpu.txt
-```
+This creates `.venv` and installs the CPU runtime plus lint, type-check, and test tools.
+For the Windows/Linux GPU profile, add `--no-group cpu --extra gpu` to `uv sync` and `uv run`.
+See [runtime profiles](README.md#runtime-profiles) for CUDA prerequisites and metadata overrides.
+Keep dependency changes in `pyproject.toml` and regenerate `uv.lock` with `uv lock`.
 
 ## Run the App
-```powershell
-python main.py
+```bash
+uv run main.py
 ```
 
 ## Test and Lint
-```powershell
-python -m ruff check .
-python -m pytest -q tests/unit tests/service tests/integration tests/ui
+```bash
+uv run ruff check .
+uv run mypy --config-file mypy.ini system/runtime_settings.py
+uv run pytest -q tests/unit tests/service tests/integration tests/ui
 ```
+CI performs a complete `uv sync --locked` on Ubuntu, Windows, and macOS before these checks.
 
 Optional real E2E test:
 ```powershell
 $env:CADENCE_RUN_E2E="1"
 $env:CADENCE_E2E_BOOK="C:\path\to\book.epub"
-python -m pytest -q tests/e2e/test_full_pipeline_real.py -m e2e
+uv run pytest -q tests/e2e/test_full_pipeline_real.py -m e2e
 ```
 
 ## Commit Guidelines
