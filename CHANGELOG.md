@@ -17,6 +17,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Use package text validation and chunking for both desktop synthesis and the standalone adapter CLI.
 
 ### Fixed
+- Load ONNX Runtime before Qt on Windows to avoid the bundled MSVC runtime conflict exposed by native backend tests.
 - Replace the removed Supertonic voices API with `voice_style_names` and stop forcing English for every book.
 - Preserve the ONNX provider patch that the 1.3.1 loader still reads, with regression coverage for provider selection.
 
