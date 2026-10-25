@@ -1,9 +1,13 @@
+import os
+from pathlib import Path
+import subprocess
+import sys
 from unittest.mock import Mock
 
 import pytest
 import torch
 import whisperx
-from whisperx import vad
+from whisperx.vads import pyannote as vad
 
 from system import whisperx_runtime
 
@@ -40,7 +44,7 @@ def test_verified_vad_load_has_scoped_globals(monkeypatch):
 def test_vad_hash_mismatch_fails_before_loading(tmp_path, monkeypatch):
     (tmp_path / "assets").mkdir()
     (tmp_path / "assets" / "pytorch_model.bin").write_bytes(b"changed checkpoint")
-    monkeypatch.setattr(vad, "__file__", str(tmp_path / "vad.py"))
+    monkeypatch.setattr(whisperx, "__file__", str(tmp_path / "__init__.py"))
     load_vad = Mock()
     monkeypatch.setattr(vad, "load_vad_model", load_vad)
     with pytest.raises(RuntimeError, match="SHA256"):
@@ -89,3 +93,41 @@ def test_vad_scope_preserves_existing_permissions(monkeypatch):
         before = set(torch.serialization.get_safe_globals())
         whisperx_runtime.load_whisperx_model("small", "cpu", "int8")
         assert set(torch.serialization.get_safe_globals()) == before
+
+
+@pytest.mark.parametrize("version", ["3.3.2", "4.0.0", "4.0.1", "4.0.3", "4.0.7", "4.1.0"])
+def test_unreviewed_pyannote_version_is_rejected(monkeypatch, version):
+    monkeypatch.setattr(whisperx_runtime, "version", lambda package: version)
+    load_vad = Mock()
+    monkeypatch.setattr(vad, "load_vad_model", load_vad)
+    with pytest.raises(RuntimeError, match=r"pyannote.audio==4\.0\.2"):
+        whisperx_runtime.load_whisperx_model("small", "cpu", "int8")
+    load_vad.assert_not_called()
+
+
+def test_runtime_enables_mps_fallback_before_importing_torch():
+    script = """
+import builtins
+import os
+import sys
+
+os.environ.pop("PYTORCH_ENABLE_MPS_FALLBACK", None)
+original = builtins.__import__
+observed = []
+def watched(name, *args, **kwargs):
+    if name == "torch" and "torch" not in sys.modules:
+        observed.append(os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK"))
+    return original(name, *args, **kwargs)
+builtins.__import__ = watched
+from system import whisperx_runtime
+assert observed and observed[0] == "1", observed
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=Path(__file__).resolve().parents[2],
+        env=dict(os.environ),
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

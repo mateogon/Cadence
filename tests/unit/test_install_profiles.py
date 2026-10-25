@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
-from packaging.version import Version
 
 ROOT = Path(__file__).resolve().parents[2]
 UV = shutil.which("uv")
@@ -53,15 +52,16 @@ def test_locked_profiles_install_one_runtime_and_matching_torch(platform, machin
     runtime = "onnxruntime-gpu" if gpu else "onnxruntime"
     assert {name for name in selected if name.startswith("onnxruntime")} == {runtime}
     assert str(selected[runtime].specifier) == "==1.24.1"
-    suffix = "" if platform == "darwin" else "+cu124" if gpu else "+cpu"
+    suffix = "" if platform == "darwin" else "+cu128" if gpu else "+cpu"
     for name in ("torch", "torchaudio"):
-        assert str(selected[name].specifier) == f"==2.6.0{suffix}"
-    assert str(selected["whisperx"].specifier) == "==3.3.1"
-    assert str(selected["pyannote-audio"].specifier) == "==3.3.2"
-    if platform == "win32":
-        # CTranslate2 4.4 loads Windows DLLs through pkg_resources, removed in setuptools 82.
-        setuptools_version = str(selected["setuptools"].specifier).removeprefix("==")
-        assert Version(setuptools_version) < Version("82")
+        assert str(selected[name].specifier) == f"==2.8.0{suffix}"
+    assert str(selected["whisperx"].specifier) == "==3.8.6"
+    assert str(selected["pyannote-audio"].specifier) == "==4.0.2"
+    assert str(selected["torchvision"].specifier) == f"==0.23.0{suffix}"
+    assert str(selected["torchcodec"].specifier) == "==0.7.0"
+    assert str(selected["faster-whisper"].specifier) == "==1.2.1"
+    assert str(selected["numpy"].specifier) == "==2.2.6"
+    assert str(selected["sympy"].specifier) == "==1.13.3"
 
 
 def test_uv_rejects_combined_cpu_and_gpu_profiles():
@@ -102,8 +102,9 @@ def test_windows_release_profile_contains_gpu_runtime_and_build_tool():
     assert "pyinstaller" in selected
     assert "onnxruntime-gpu" in selected
     assert "onnxruntime" not in selected
-    assert str(selected["torch"].specifier) == "==2.6.0+cu124"
-    assert str(selected["torchaudio"].specifier) == "==2.6.0+cu124"
+    assert str(selected["torch"].specifier) == "==2.8.0+cu128"
+    assert str(selected["torchaudio"].specifier) == "==2.8.0+cu128"
+    assert str(selected["torchvision"].specifier) == "==0.23.0+cu128"
 
 
 @pytest.mark.parametrize(
@@ -130,8 +131,9 @@ def test_kokoro_extra_preserves_runtime_profiles_and_tokenizer_pins(platform, ma
     assert selected["en-core-web-sm"].url.endswith("en_core_web_sm-3.8.0-py3-none-any.whl")
     runtime = "onnxruntime-gpu" if gpu else "onnxruntime"
     assert {name for name in selected if name.startswith("onnxruntime")} == {runtime}
-    suffix = "" if platform == "darwin" else "+cu124" if gpu else "+cpu"
+    suffix = "" if platform == "darwin" else "+cu128" if gpu else "+cpu"
     for name in ("torch", "torchaudio"):
-        assert str(selected[name].specifier) == f"==2.6.0{suffix}"
-    assert str(selected["numpy"].specifier) == "==1.26.4"
-    assert str(selected["whisperx"].specifier) == "==3.3.1"
+        assert str(selected[name].specifier) == f"==2.8.0{suffix}"
+    assert str(selected["numpy"].specifier) == "==2.2.6"
+    assert str(selected["whisperx"].specifier) == "==3.8.6"
+    assert str(selected["torchvision"].specifier) == f"==0.23.0{suffix}"

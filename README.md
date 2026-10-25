@@ -94,7 +94,7 @@ Cadence processes books one chapter at a time, not as one long batch.
    ```
 
 ### Runtime profiles
-`uv sync --locked` creates `.venv` with CPU ONNX Runtime and matching Torch/Torchaudio 2.6.0.
+`uv sync --locked` creates `.venv` with CPU ONNX Runtime and matching Torch/Torchaudio 2.8.0 and Torchvision 0.23.0.
 It also installs the development tools. Existing `venv` directories are kept.
 
 For NVIDIA GPUs on Windows/Linux, install and run the GPU profile:
@@ -102,7 +102,7 @@ For NVIDIA GPUs on Windows/Linux, install and run the GPU profile:
 uv sync --locked --no-group cpu --extra gpu
 uv run --no-group cpu --extra gpu main.py
 ```
-This selects ONNX Runtime GPU 1.24.1 and the official CUDA 12.4 Torch/Torchaudio wheels.
+This selects ONNX Runtime GPU 1.24.1 and the official CUDA 12.8 Torch/Torchaudio/Torchvision wheels.
 The machine also needs compatible NVIDIA drivers and ONNX Runtime's [CUDA/cuDNN runtime libraries](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements).
 Use the same profile flags for each `uv run`; a plain `uv run` restores the default CPU profile.
 The `cpu` group and `gpu` extra conflict, so uv rejects a request for both.
@@ -155,7 +155,7 @@ falls back to CPU with a log message. `CADENCE_TTS_SPEED` applies to both backen
 Supertonic only. Kokoro's model identity is saved with each book.
 
 The lockfile uses version-specific [uv metadata overrides](https://docs.astral.sh/uv/concepts/resolution/#dependency-metadata)
-for Supertonic 1.3.1 and faster-whisper 1.1.0. Each package requests the CPU `onnxruntime`
+for Supertonic 1.3.1 and faster-whisper 1.2.1. Each package requests the CPU `onnxruntime`
 distribution upstream, although both ONNX distributions expose the same API. The overrides
 remove only that requirement. Cadence's selected profile supplies exactly one runtime.
 Use uv for installation; plain pip does not apply these overrides.
@@ -169,8 +169,15 @@ Model loading took 0.74 seconds for CPU and 10.66 seconds for CoreML.
 These measurements apply to this chapter and machine. To try CoreML when available,
 set `CADENCE_USE_COREML=1` before starting Cadence; `CADENCE_FORCE_CPU=1` takes priority.
 
-WhisperX uses CPU with `int8` when CUDA is unavailable. Faster-whisper has no MPS backend.
-Cadence verifies the bundled VAD checkpoint hash and temporarily permits its known metadata classes during loading. Torch keeps `weights_only` loading enabled; no local wrapper is needed. External WhisperX environments must provide the pinned compatible dependencies and Torch 2.6 or newer.
+WhisperX 3.8.6 uses CPU with `int8` when CUDA is unavailable. Faster-whisper has no MPS backend.
+Cadence verifies the bundled VAD checkpoint hash and temporarily permits its known metadata classes during loading. Torch keeps `weights_only` loading enabled; no local wrapper is needed. External WhisperX environments must provide the locked compatible stack, including pyannote.audio 4.0.2. Other pyannote versions are rejected before VAD loading: later releases force unrestricted checkpoint loading internally.
+
+The updated stack pins NumPy 2.2.6 and pyannote.audio 4.0.2. On a Mac with
+Homebrew FFmpeg 8, TorchCodec 0.7 can warn that its FFmpeg 4–7 libraries cannot
+load. Cadence does not use that decoder: WhisperX decodes with the FFmpeg CLI
+and passes waveform tensors to pyannote's supported in-memory path. The normal
+import requires no FFmpeg downgrade or Hugging Face token. TorchCodec's direct
+file decoding is not supported by this FFmpeg 8 setup.
 
 Calibre lookup uses `CADENCE_CALIBRE_PATH`, then `PATH`, the macOS app path, and the Windows default. An invalid explicit override fails instead of silently selecting another installation. Alignment uses `CADENCE_WHISPERX_PYTHON` first, then the running interpreter (`sys.executable`), `.venv`, and `venv`.
 To keep a separate WhisperX environment, set its interpreter before starting Cadence:
