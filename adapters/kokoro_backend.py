@@ -1,5 +1,7 @@
 import math
 import os
+
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 import re
 from pathlib import Path
 

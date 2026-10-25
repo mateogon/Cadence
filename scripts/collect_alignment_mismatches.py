@@ -11,7 +11,12 @@ Outputs:
 
 from __future__ import annotations
 
+import os
+
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
 import argparse
+import sys
 import csv
 import difflib
 import json
@@ -22,6 +27,9 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 import whisperx
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from system.whisperx_runtime import load_whisperx_model
 
 
 NORMALIZE_MAP = {
@@ -326,7 +334,7 @@ def main():
                     f"Loading WhisperX model={args.whisper_model} device={device} "
                     f"compute_type={compute_type} ..."
                 )
-                model = whisperx.load_model(
+                model = load_whisperx_model(
                     args.whisper_model,
                     device=device,
                     compute_type=compute_type,
