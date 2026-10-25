@@ -54,7 +54,7 @@ jobs:
 
       - name: Check Kokoro pipeline and English tokenizer
         if: matrix.profile == 'kokoro'
-        run: uv run --locked --extra kokoro python -c "from kokoro import KPipeline; import en_core_web_sm; nlp = en_core_web_sm.load(); tokens = [token.text for token in nlp('Cadence reads books aloud.')]; assert tokens == ['Cadence', 'reads', 'books', 'aloud', '.']; pipeline = KPipeline(lang_code='a', model=False, repo_id='hexgrad/Kokoro-82M'); results = list(pipeline('Hello world.', voice=None)); assert results and any(result.phonemes for result in results); assert all(result.audio is None for result in results); print('tokens', tokens); print('phonemes', [result.phonemes for result in results])"
+        run: uv run --locked --extra kokoro python -c "from kokoro import KPipeline; import en_core_web_sm; nlp = en_core_web_sm.load(); tokens = [token.text for token in nlp('Cadence reads books aloud.')]; assert tokens == ['Cadence', 'reads', 'books', 'aloud', '.']; pipeline = KPipeline(lang_code='a', model=False, repo_id='hexgrad/Kokoro-82M'); results = list(pipeline('Hello world.', voice=None)); assert results and any(result.phonemes for result in results); assert all(result.audio is None for result in results); print('tokens', tokens); print('phonemes', ascii([result.phonemes for result in results]))"
 
       - name: Run lint
         run: uv run --locked ${{ matrix.profile == 'kokoro' && '--extra kokoro' || '' }} ruff check .
