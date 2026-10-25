@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from pathlib import Path
 
@@ -9,6 +10,9 @@ DEFAULTS = {
     "CADENCE_EXTRACT_WORKERS": "4",
     "CADENCE_SYNTH_WORKERS": "1",
     "CADENCE_TTS_MAX_CHARS": "800",
+    "CADENCE_TTS_MODEL": "supertonic-3",
+    "CADENCE_TTS_SPEED": "1.05",
+    "CADENCE_TTS_STEPS": "8",
     "CADENCE_FORCE_CPU": "0",
     "CADENCE_USE_TENSORRT": "0",
     "CADENCE_CUDA_ONLY": "1",
@@ -22,6 +26,30 @@ DEFAULTS = {
     "CADENCE_WHISPERX_PYTHON": "",
     "CADENCE_CALIBRE_PATH": "",
 }
+
+
+def resolve_tts_settings(model=None, speed=None, steps=None):
+    """Validate the synthesis settings before loading a model or writing audio."""
+    model = str(model if model is not None else os.getenv(
+        "CADENCE_TTS_MODEL", DEFAULTS["CADENCE_TTS_MODEL"])).strip()
+    if model not in ("supertonic", "supertonic-2", "supertonic-3"):
+        raise ValueError("CADENCE_TTS_MODEL must be supertonic, supertonic-2 or supertonic-3.")
+    try:
+        speed = float(speed if speed is not None else os.getenv(
+            "CADENCE_TTS_SPEED", DEFAULTS["CADENCE_TTS_SPEED"]))
+    except (ValueError, TypeError) as exc:
+        raise ValueError("CADENCE_TTS_SPEED must be a number between 0.7 and 2.0.") from exc
+    if not math.isfinite(speed) or not 0.7 <= speed <= 2.0:
+        raise ValueError("CADENCE_TTS_SPEED must be a number between 0.7 and 2.0.")
+    raw_steps = str(steps if steps is not None else os.getenv(
+        "CADENCE_TTS_STEPS", DEFAULTS["CADENCE_TTS_STEPS"])).strip()
+    try:
+        steps = int(raw_steps)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("CADENCE_TTS_STEPS must be an integer between 1 and 100.") from exc
+    if not 1 <= steps <= 100:
+        raise ValueError("CADENCE_TTS_STEPS must be an integer between 1 and 100.")
+    return {"model": model, "speed": speed, "steps": steps}
 
 
 def load_settings(path=SETTINGS_PATH):

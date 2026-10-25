@@ -3,6 +3,8 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 from system import book_manager as bm
 
 
@@ -78,7 +80,11 @@ class _FakeWorkerProc:
         self._terminated = True
 
 
-def test_pipeline_generated_short_book(tmp_path, monkeypatch):
+@pytest.mark.parametrize("workers", [1, 2])
+@pytest.mark.parametrize("legacy", [False, True])
+def test_pipeline_generated_short_book(tmp_path, monkeypatch, workers, legacy):
+    monkeypatch.setenv("CADENCE_SYNTH_WORKERS", str(workers))
+    monkeypatch.setenv("CADENCE_TTS_MODEL", "supertonic-3")
     monkeypatch.chdir(tmp_path)
     library = tmp_path / "library"
     library.mkdir()
@@ -98,6 +104,15 @@ def test_pipeline_generated_short_book(tmp_path, monkeypatch):
             chapter_text = ("Short chapter text. " * 30).strip()
             (out_dir / "ch1.xhtml").write_text(chapter_text, encoding="utf-8")
             (out_dir / "ch2.xhtml").write_text(chapter_text, encoding="utf-8")
+            (out_dir / "book.opf").write_text(
+                '<package xmlns="http://www.idpf.org/2007/opf" '
+                'xmlns:dc="http://purl.org/dc/elements/1.1/">'
+                '<metadata><dc:language>es-CL</dc:language></metadata>'
+                '<manifest><item id="one" href="ch1.xhtml"/>'
+                '<item id="two" href="ch2.xhtml"/></manifest>'
+                '<spine><itemref idref="one"/><itemref idref="two"/></spine></package>',
+                encoding="utf-8",
+            )
             return _RunResult(returncode=0)
 
         # 2) HTML -> TXT conversion step.
@@ -121,11 +136,18 @@ def test_pipeline_generated_short_book(tmp_path, monkeypatch):
 
     fake_mod = types.ModuleType("adapters.supertonic_backend")
 
+    models = []
+    synthesis_calls = []
+
     class _FakeBackend:
+        def __init__(self, model=None):
+            models.append(model)
+
         def ensure_model(self):
             return self
 
-        def synthesize(self, text, voice, max_chars=1600):
+        def synthesize(self, text, voice, max_chars=1600, lang="na"):
+            synthesis_calls.append((voice, lang))
             return b"wav-bytes"
 
         def save_audio(self, wav, output_path):
@@ -154,6 +176,11 @@ def test_pipeline_generated_short_book(tmp_path, monkeypatch):
     assert meta["status"] == "complete"
     assert meta["total_chapters"] == 2
     assert meta["last_chapter"] == 2
+    assert meta["language"] == "es-CL"
+    assert meta["tts_backend"] == "supertonic"
+    assert meta["tts_model"] == "supertonic-3"
+    assert models and set(models) == {"supertonic-3"}
+    assert synthesis_calls == [("M3", "es-CL"), ("M3", "es-CL")]
 
     assert (book_dir / "content" / "ch_001.txt").exists()
     assert (book_dir / "content" / "ch_001.json").exists()
@@ -163,3 +190,33 @@ def test_pipeline_generated_short_book(tmp_path, monkeypatch):
     assert (book_dir / "audio" / "ch_002.wav").exists()
 
     assert any("Streaming Chapter Pipeline" in line for line in logs)
+
+    original_audio = (book_dir / "audio" / "ch_001.wav").read_bytes()
+    if legacy:
+        meta.pop("tts_backend")
+        meta.pop("tts_model")
+        meta.pop("language")
+        (book_dir / "metadata.json").write_text(json.dumps(meta), encoding="utf-8")
+    continuation_model = "supertonic-2" if legacy else "supertonic-3"
+
+    for next_model in ("supertonic-2", "supertonic-3"):
+        monkeypatch.setenv("CADENCE_TTS_MODEL", next_model)
+        (book_dir / "audio" / "ch_002.wav").unlink()
+        (book_dir / "content" / "ch_002.json").unlink()
+        models.clear()
+        synthesis_calls.clear()
+
+        assert bm.BookManager.import_book(
+            str(source_epub), "F1", lambda pct, msg: None, log_callback=logs.append
+        )
+
+        resumed = json.loads((book_dir / "metadata.json").read_text(encoding="utf-8"))
+        assert resumed["tts_backend"] == "supertonic"
+        assert resumed["tts_model"] == continuation_model
+        assert resumed["voice"] == "M3"
+        assert resumed.get("language", "") == ("" if legacy else "es-CL")
+        assert models == [continuation_model]
+        assert synthesis_calls == [("M3", "na" if legacy else "es-CL")]
+        assert (book_dir / "audio" / "ch_001.wav").read_bytes() == original_audio
+
+    assert any("historical audio model is unknown" in line for line in logs) == legacy

@@ -2,6 +2,8 @@ import sys
 import types
 import xml.etree.ElementTree as ET
 
+import pytest
+
 from system.book_manager import BookManager
 
 
@@ -338,10 +340,13 @@ def test_run_streaming_pipeline_cancel_mid_synthesis_returns_false(tmp_path, mon
     fake_mod = types.ModuleType("adapters.supertonic_backend")
 
     class _FakeBackend:
+        def __init__(self, model=None):
+            self.model = model
+
         def ensure_model(self):
             return self
 
-        def synthesize(self, text, voice, max_chars=800):
+        def synthesize(self, text, voice, max_chars=800, lang="na"):
             state["cancelled"] = True
             return None
 
@@ -571,3 +576,36 @@ def test_align_timestamps_replace_block_distributes_times():
     assert [w["word"] for w in words] == ["alpha", "beta", "gamma"]
     assert words[1]["start"] == 0.2
     assert words[1]["end"] == 0.4
+
+
+def test_extract_opf_metadata_reads_dc_language():
+    root = ET.fromstring(
+        '<package xmlns:dc="http://purl.org/dc/elements/1.1/">'
+        '<metadata><dc:language> es-CL </dc:language></metadata></package>'
+    )
+
+    assert BookManager._extract_opf_metadata(root, {})["language"] == "es-CL"
+
+
+def test_extract_opf_metadata_missing_language_is_empty():
+    root = ET.fromstring("<package><metadata><title>Book</title></metadata></package>")
+
+    assert BookManager._extract_opf_metadata(root, {})["language"] == ""
+
+
+def test_run_streaming_pipeline_rejects_unsupported_stored_backend(tmp_path):
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+    (content_dir / "ch_001.txt").write_text("Hola", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unsupported stored TTS backend: other"):
+        BookManager._run_streaming_pipeline(
+            book_dir=tmp_path,
+            content_dir=content_dir,
+            audio_dir=tmp_path / "audio",
+            voice="M3",
+            metadata={"tts_backend": "other", "tts_model": "other-model"},
+            progress_callback=lambda pct, msg: None,
+            is_cancelled=lambda: False,
+            log=lambda msg: None,
+        )

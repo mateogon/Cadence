@@ -681,6 +681,12 @@ class BookManager:
         title = ""
         author = ""
         cover = ""
+        language = ""
+        language_node = root.find(".//metadata/language")
+        if language_node is None:
+            language_node = root.find(".//metadata/{http://purl.org/dc/elements/1.1/}language")
+        if language_node is not None and language_node.text:
+            language = str(language_node.text).strip()
         title_node = root.find(".//metadata/title") or root.find(".//title")
         if title_node is not None and title_node.text:
             title = str(title_node.text).strip()
@@ -725,7 +731,7 @@ class BookManager:
                         cover = href
                         break
 
-        return {"title": title, "author": author, "cover": cover}
+        return {"title": title, "author": author, "cover": cover, "language": language}
 
     @staticmethod
     def _extract_chapter_texts(
@@ -758,7 +764,7 @@ class BookManager:
 
             opf_files = list(temp_dir.rglob("*.opf"))
             ordered_html_files = []
-            extracted_meta = {"title": "", "author": "", "cover": ""}
+            extracted_meta = {"title": "", "author": "", "cover": "", "language": ""}
 
             if opf_files:
                 try:
@@ -1201,6 +1207,21 @@ class BookManager:
                 }
             )
 
+        tts_model = str(metadata.get("tts_model") or "").strip()
+        language = str(metadata.get("language") or "na").strip() or "na"
+        if any(not chapter["has_audio"] for chapter in chapters):
+            tts_backend = str(metadata.get("tts_backend") or "supertonic").strip()
+            if tts_backend != "supertonic":
+                raise ValueError(f"Unsupported stored TTS backend: {tts_backend}")
+            if not tts_model:
+                tts_model = os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
+                log(
+                    "Legacy book has no stored TTS model; the historical audio model is unknown. "
+                    f"Using '{tts_model}' for pending chapters and preserving existing audio."
+                )
+            metadata["tts_backend"] = tts_backend
+            metadata["tts_model"] = tts_model
+
         total_chapters = len(chapters)
         ready_count = sum(1 for c in chapters if c["ready"])
         whisper_worker = WhisperXImportWorker()
@@ -1428,7 +1449,7 @@ class BookManager:
                 if synth_targets:
                     from adapters.supertonic_backend import SupertonicBackend
 
-                    backend = SupertonicBackend()
+                    backend = SupertonicBackend(model=tts_model)
                     backend.ensure_model()
                     for chapter in synth_targets:
                         if is_cancelled():
@@ -1439,7 +1460,9 @@ class BookManager:
                         with open(chapter["txt"], "r", encoding="utf-8") as f:
                             text_content = f.read().strip()
                         if text_content:
-                            wav = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                            wav = backend.synthesize(
+                                text_content, voice, max_chars=tts_max_chars, lang=language
+                            )
                             if wav is not None:
                                 backend.save_audio(wav, chapter["wav"])
                                 chapter["has_audio"] = (
@@ -1471,7 +1494,7 @@ class BookManager:
                     if not hasattr(thread_local, "backend"):
                         from adapters.supertonic_backend import SupertonicBackend
 
-                        backend = SupertonicBackend()
+                        backend = SupertonicBackend(model=tts_model)
                         backend.ensure_model()
                         thread_local.backend = backend
                     return thread_local.backend
@@ -1485,7 +1508,9 @@ class BookManager:
                     if not text_content:
                         return ("empty", chapter, time.monotonic() - synth_started)
                     backend = get_thread_backend()
-                    wav_data = backend.synthesize(text_content, voice, max_chars=tts_max_chars)
+                    wav_data = backend.synthesize(
+                        text_content, voice, max_chars=tts_max_chars, lang=language
+                    )
                     if wav_data is None:
                         return ("empty", chapter, time.monotonic() - synth_started)
                     backend.save_audio(wav_data, chapter["wav"])
@@ -1621,6 +1646,15 @@ class BookManager:
                 log=log,
             )
 
+            # Reuse stored synthesis settings even when chapter text needs extraction again.
+            metadata = {}
+            metadata_path = book_dir / "metadata.json"
+            if metadata_path.exists():
+                try:
+                    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    pass
+
             # --- STEP 1: EXTRACTION (Calibre) ---
             if extract_needed:
                 progress_estimator.emit("Step 1/3: Extracting Text...", force=True)
@@ -1645,6 +1679,11 @@ class BookManager:
                     "author": str((extracted_meta or {}).get("author", "")).strip() or "Unknown",
                     "status": "text_only",
                     "voice": voice,
+                    "language": str((extracted_meta or {}).get("language", "")).strip(),
+                    "tts_backend": metadata.get("tts_backend") or "supertonic",
+                    "tts_model": metadata.get("tts_model") or (
+                        os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
+                    ),
                     "chapters": chapter_count,
                     "total_chapters": chapter_count,
                     "last_chapter": 0,
@@ -1656,9 +1695,6 @@ class BookManager:
             else:
                 chapter_count = len(list(content_dir.glob("*.txt")))
                 log(f"Skipped extraction. Found {chapter_count} existing chapters.")
-                # Load existing metadata
-                with open(book_dir / "metadata.json", "r") as f:
-                    metadata = json.load(f)
                 metadata["source_epub"] = str(Path("source") / stored_epub_name)
 
             # Export a silent full-book text artifact alongside the stored source EPUB.

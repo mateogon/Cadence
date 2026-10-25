@@ -1,6 +1,30 @@
 import qt.main_window as mw
 
 
+def test_tts_settings_apply_and_reject_invalid_speed(qapp, monkeypatch):
+    monkeypatch.setattr(mw, "load_settings", lambda: dict(mw.DEFAULTS))
+    saved = []
+    warnings = []
+    monkeypatch.setattr(mw, "save_settings", lambda values: saved.append(values))
+    monkeypatch.setattr(mw, "apply_settings_to_environ", lambda *args, **kwargs: None)
+    monkeypatch.setattr(mw.QtWidgets.QMessageBox, "warning", lambda *args: warnings.append(args))
+    dlg = mw.RuntimeSettingsDialog()
+    assert dlg._vars["CADENCE_TTS_MODEL"].currentText() == "supertonic-3"
+    assert dlg._vars["CADENCE_TTS_SPEED"].currentText() == "1.05"
+    assert dlg._vars["CADENCE_TTS_STEPS"].currentText() == "8"
+    dlg._vars["CADENCE_TTS_SPEED"].setCurrentText("nan")
+    dlg._apply()
+    assert warnings and not saved
+    dlg._vars["CADENCE_TTS_SPEED"].setCurrentText("1.25")
+    dlg._vars["CADENCE_TTS_STEPS"].setCurrentText("10")
+    dlg._vars["CADENCE_TTS_MODEL"].setCurrentText("supertonic-2")
+    dlg._apply()
+    assert saved[0]["CADENCE_TTS_MODEL"] == "supertonic-2"
+    assert saved[0]["CADENCE_TTS_SPEED"] == "1.25"
+    assert saved[0]["CADENCE_TTS_STEPS"] == "10"
+    dlg.close()
+
+
 def test_runtime_settings_dialog_loads_values_from_settings(qapp, monkeypatch):
     valid_profiles = sorted(mw.STYLE_PROFILES.keys())
     chosen_profile = next((p for p in valid_profiles if p != "cadence"), "cadence")

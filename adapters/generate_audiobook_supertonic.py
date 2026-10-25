@@ -4,7 +4,7 @@ import re
 import argparse
 import time
 import numpy as np
-import soundfile as sf
+from pathlib import Path
 from unicodedata import normalize
 from tqdm import tqdm  # pip install tqdm
 
@@ -17,9 +17,16 @@ import onnxruntime as ort
 # Try to import supertonic; handle error if not found
 try:
     from supertonic import TTS
+    from supertonic.config import AVAILABLE_LANGUAGES, MAX_TEXT_LENGTH
+    from supertonic.utils import chunk_text
 except ImportError:
     print("Error: 'supertonic' library not found. Please ensure it is installed.")
     sys.exit(1)
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from system.runtime_settings import resolve_tts_settings
 
 # --- Configuration ---
 DEFAULT_VOICE = "M3"  # A solid default voice
@@ -63,7 +70,7 @@ if USE_SYSTEM_CUDA_DLL_PATH:
 
         # Sort reverse alphabetically (e.g., v12.8 > v12.4)
         cuda_dirs.sort(reverse=True)
-        
+
         cuda_found = False
         for cuda_dir in cuda_dirs:
             bin_path = os.path.join(cuda_dir, "bin")
@@ -75,7 +82,7 @@ if USE_SYSTEM_CUDA_DLL_PATH:
                     break # Stop after adding the latest valid one
                 except OSError:
                     print(f"⚠️  Failed to add CUDA DLL path: {bin_path}")
-        
+
         if not cuda_found:
              print(f"⚠️  No valid CUDA v*\\bin directories found in {CUDA_BASE_PATH}")
     elif os.name == 'nt':
@@ -83,75 +90,51 @@ if USE_SYSTEM_CUDA_DLL_PATH:
 
 # --- Helper Functions ---
 
-def sanitize_text(text, supported_chars):
-    """Cleans text to ensure compatibility with the model."""
+def sanitize_text(text, text_processor):
+    """Normalize punctuation and remove characters rejected by the model."""
     normalized = normalize("NFKC", text.translate(UNICODE_PUNCT_TRANSLATIONS))
+    _, unsupported = text_processor.validate_text(normalized)
+    unsupported = set(unsupported)
 
-    # If apostrophes are unsupported, avoid splitting words like "don't" -> "don t".
-    # We collapse in-word apostrophes to produce "dont" as the safer fallback.
-    if "'" not in supported_chars:
+    # Preserve words when the model cannot represent in-word apostrophes.
+    if "'" in unsupported:
         normalized = re.sub(r"(?<=\w)'(?=\w)", "", normalized)
 
     output = []
-    
     for ch in normalized:
-        if ch in supported_chars:
+        if ch not in unsupported:
             output.append(ch)
-        else:
-            # Replace unsupported non-space chars with space to prevent word merging
-            if ch.isspace():
-                output.append(" ")
-            elif ch == "'":
-                # Standalone apostrophes can be dropped safely if unsupported.
-                continue
-            else:
-                output.append(" ")
-    
-    # Collapse multiple spaces into one
+        elif ch != "'":
+            output.append(" ")
     return re.sub(r"\s+", " ", "".join(output)).strip()
 
-def get_smart_chunks(text, max_chars=800):
-    """
-    Splits text into chunks that fit within the context window,
-    prioritizing sentence boundaries.
-    """
-    # 1. Split by sentence endings (. ! ? followed by space)
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-    chunks = []
-    current_chunk = ""
 
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:
-            continue
+def synthesize_text(tts, text, voice_style, max_chars=1600, lang="na", model=None):
+    """Use the same synthesis settings for the application and standalone CLI."""
+    settings = resolve_tts_settings(model=model)
+    clean_text = sanitize_text(text, tts.model.text_processor)
+    if not clean_text:
+        return None
+    language = str(lang or "na").strip().lower().replace("_", "-").split("-")[0]
+    if language not in AVAILABLE_LANGUAGES:
+        language = "na"
+    # Keep long chapters under the package's per-call text limit.
+    batches = chunk_text(clean_text, MAX_TEXT_LENGTH) if len(clean_text) > MAX_TEXT_LENGTH else [clean_text]
+    audio = []
+    for batch in batches:
+        wav, _ = tts.synthesize(
+            batch,
+            voice_style=voice_style,
+            lang=language,
+            max_chunk_length=max_chars,
+            speed=settings["speed"],
+            total_steps=settings["steps"],
+        )
+        audio.append(wav)
+    return audio[0] if len(audio) == 1 else np.concatenate(audio, axis=1)
 
-        # If adding the next sentence exceeds limit, push current chunk
-        if len(current_chunk) + len(sentence) < max_chars:
-            current_chunk = (current_chunk + " " + sentence).strip()
-        else:
-            if current_chunk:
-                chunks.append(current_chunk)
-            
-            # If the single sentence is huge (bigger than max_chars), hard split it by commas
-            if len(sentence) >= max_chars:
-                sub_parts = re.split(r'(?<=[,;])\s+', sentence)
-                temp_sub = ""
-                for part in sub_parts:
-                    if len(temp_sub) + len(part) < max_chars:
-                        temp_sub = (temp_sub + " " + part).strip()
-                    else:
-                        if temp_sub: chunks.append(temp_sub)
-                        temp_sub = part
-                current_chunk = temp_sub
-            else:
-                current_chunk = sentence
 
-    if current_chunk:
-        chunks.append(current_chunk)
-
-    return [c for c in chunks if c.strip()]
-
-def init_tts_engine():
+def init_tts_engine(model=None):
     """Initializes Supertonic with GPU checks."""
     print("Initializing TTS Engine...")
 
@@ -167,8 +150,7 @@ def init_tts_engine():
     providers = ort.get_available_providers()
     print(f"ONNX available providers: {providers}")
 
-    # Supertonic defaults to CPU in this package build, so we patch provider
-    # order before constructing TTS to prefer TensorRT/CUDA when available.
+    # The 1.3.1 loader reads this module constant when creating ONNX sessions.
     force_cpu = os.getenv("CADENCE_FORCE_CPU", "").strip() == "1"
     use_tensorrt = os.getenv("CADENCE_USE_TENSORRT", "").strip() == "1"
     cuda_only = os.getenv("CADENCE_CUDA_ONLY", "").strip() == "1"
@@ -189,15 +171,13 @@ def init_tts_engine():
 
     try:
         import supertonic.loader as st_loader
-        import supertonic.config as st_config
 
         st_loader.DEFAULT_ONNX_PROVIDERS = requested
-        st_config.DEFAULT_ONNX_PROVIDERS = requested
         print(f"Supertonic requested providers: {requested}")
     except Exception as e:
         print(f"⚠️  Could not patch Supertonic providers: {e}")
 
-    tts = TTS(auto_download=True)
+    tts = TTS(model=resolve_tts_settings(model=model)["model"], auto_download=True)
 
     # Report real providers actually bound to the model sessions.
     try:
@@ -216,7 +196,7 @@ def init_tts_engine():
 
 # --- Main Logic ---
 
-def process_folder(input_dir, output_dir, voice_name):
+def process_folder(input_dir, output_dir, voice_name, lang="na", model=None):
     # 1. Setup
     input_path = Path(input_dir)
     output_path = Path(output_dir)
@@ -224,7 +204,7 @@ def process_folder(input_dir, output_dir, voice_name):
 
     # 2. Find text files
     files = sorted([f for f in os.listdir(input_path) if f.lower().endswith('.txt')])
-    
+
     if not files:
         print(f"❌ No .txt files found in {input_dir}")
         return
@@ -233,14 +213,13 @@ def process_folder(input_dir, output_dir, voice_name):
     print(f"Output Directory: {output_path.resolve()}\n")
 
     # 3. Initialize Engine
-    tts = init_tts_engine()
-    voice_style = tts.get_voice_style(voice_name=voice_name)
-    supported_chars = tts.model.text_processor.supported_character_set
+    tts = init_tts_engine(model=model)
+    voice_style = tts.get_voice_style(voice_name)
 
     # 4. Process Loop
     # We use tqdm for a nice progress bar
     total_start = time.time()
-    
+
     with tqdm(total=len(files), unit="file", desc="Generating Audiobook") as pbar:
         for filename in files:
             file_path = os.path.join(input_path, filename)
@@ -259,31 +238,13 @@ def process_folder(input_dir, output_dir, voice_name):
                     pbar.update(1)
                     continue
 
-                # Chunking
-                chunks = get_smart_chunks(text)
-                
-                audio_segments = []
-                
-                # Process chunks (silently, unless error)
-                for chunk in chunks:
-                    clean_chunk = sanitize_text(chunk, supported_chars)
-                    if not clean_chunk: continue
-                    
-                    # Synthesize
-                    wav, _ = tts.synthesize(clean_chunk, voice_style=voice_style, lang="en")
-                    audio_segments.append(wav)
-
-                if audio_segments:
-                    # Concatenate all chunks for this chapter
-                    # Supertonic outputs (1, N), we concat along axis 1
-                    final_wav = np.concatenate(audio_segments, axis=1)
-                    
-                    # Save
-                    tts.save_audio(final_wav, out_file_path)
+                wav = synthesize_text(tts, text, voice_style, max_chars=800, lang=lang, model=model)
+                if wav is not None:
+                    tts.save_audio(wav, out_file_path)
 
             except Exception as e:
                 tqdm.write(f"\n❌ Error processing {filename}: {e}")
-            
+
             pbar.update(1)
 
     total_time = time.time() - total_start
@@ -291,30 +252,27 @@ def process_folder(input_dir, output_dir, voice_name):
 
 # --- CLI Entry Point ---
 
-if __name__ == "__main__":
-    from pathlib import Path
-
-    parser = argparse.ArgumentParser(description="Generate an audiobook from a folder of text files using Supertonic TTS.")
-    
-    parser.add_argument("input_folder", help="Path to the folder containing .txt files")
-    parser.add_argument("--output", "-o", help="Path to output folder (default: input_folder_audio)")
-    parser.add_argument("--voice", "-v", default=DEFAULT_VOICE, help="Voice ID (e.g., M1, M2, F1, F2... Default: M3)")
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Generate an audiobook from text files using Supertonic TTS.")
+    parser.add_argument("input_folder", nargs="?", help="Folder containing .txt files")
+    parser.add_argument("--output", "-o", help="Output folder (default: input_folder_audio)")
+    parser.add_argument("--voice", "-v", default=DEFAULT_VOICE, help="Voice ID (default: M3)")
+    parser.add_argument("--lang", default="na", help="Book language code (default: na)")
+    parser.add_argument("--model", help="Supertonic model (default: CADENCE_TTS_MODEL or supertonic-3)")
     parser.add_argument("--list-voices", action="store_true", help="List available voices and exit")
-
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.list_voices:
-        print("Available Voices: M1, M2, M3, M4, M5, F1, F2, F3, F4, F5")
-        sys.exit(0)
+        tts = init_tts_engine(model=args.model)
+        print(f"Available Voices: {', '.join(tts.voice_style_names)}")
+        return
+    if not args.input_folder:
+        parser.error("input_folder is required unless --list-voices is used")
+    if not os.path.isdir(args.input_folder):
+        parser.error(f"Input folder '{args.input_folder}' does not exist.")
+    out_dir = args.output or f"{args.input_folder}_audio"
+    process_folder(args.input_folder, out_dir, args.voice, lang=args.lang, model=args.model)
 
-    # Determine Output Folder
-    if args.output:
-        out_dir = args.output
-    else:
-        out_dir = f"{args.input_folder}_audio"
 
-    if not os.path.exists(args.input_folder):
-        print(f"Error: Input folder '{args.input_folder}' does not exist.")
-        sys.exit(1)
-
-    process_folder(args.input_folder, out_dir, args.voice)
+if __name__ == "__main__":
+    main()
