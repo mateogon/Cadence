@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
+from packaging.version import Version
 
 ROOT = Path(__file__).resolve().parents[2]
 UV = shutil.which("uv")
@@ -56,6 +57,10 @@ def test_locked_profiles_install_one_runtime_and_matching_torch(platform, machin
         assert str(selected[name].specifier) == f"==2.6.0{suffix}"
     assert str(selected["whisperx"].specifier) == "==3.3.1"
     assert str(selected["pyannote-audio"].specifier) == "==3.3.2"
+    if platform == "win32":
+        # CTranslate2 4.4 loads Windows DLLs through pkg_resources, removed in setuptools 82.
+        setuptools_version = str(selected["setuptools"].specifier).removeprefix("==")
+        assert Version(setuptools_version) < Version("82")
 
 
 def test_uv_rejects_combined_cpu_and_gpu_profiles():

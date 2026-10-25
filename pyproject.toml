@@ -15,6 +15,8 @@ dependencies = [
     "watchfiles",
     "librosa",
     "whisperx==3.3.1",
+    # CTranslate2 4.4 imports pkg_resources to load Windows DLLs; setuptools 82 removed it.
+    "setuptools<82; sys_platform == 'win32'",
     # WhisperX needs matching Torch/Torchaudio binaries; 2.6 supports the scoped safe VAD loader.
     "torch==2.6.0",
     "torchaudio==2.6.0",
