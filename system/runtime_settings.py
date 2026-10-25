@@ -10,6 +10,8 @@ DEFAULTS = {
     "CADENCE_EXTRACT_WORKERS": "4",
     "CADENCE_SYNTH_WORKERS": "1",
     "CADENCE_TTS_MAX_CHARS": "800",
+    "CADENCE_TTS_BACKEND": "supertonic",
+    "CADENCE_KOKORO_DEVICE": "auto",
     "CADENCE_TTS_MODEL": "supertonic-3",
     "CADENCE_TTS_SPEED": "1.05",
     "CADENCE_TTS_STEPS": "8",

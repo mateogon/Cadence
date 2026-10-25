@@ -6,6 +6,9 @@ import ctypes
 
 from system.runtime_settings import apply_settings_to_environ, load_settings
 
+# Torch reads this before the optional Kokoro backend initializes MPS.
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
 
 def build_parser():
     parser = argparse.ArgumentParser(description="Cadence (Qt)")

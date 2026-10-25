@@ -1,3 +1,4 @@
+import pytest
 import qt.main_window as mw
 
 
@@ -93,3 +94,51 @@ def test_runtime_settings_dialog_apply_saves_and_updates_env(qapp, monkeypatch):
     assert applied_settings["CADENCE_SYNTH_WORKERS"] == "3"
     assert dlg.result() == mw.QtWidgets.QDialog.DialogCode.Accepted
     dlg.close()
+
+
+def test_backend_and_device_settings_apply(qapp, monkeypatch):
+    monkeypatch.setattr(mw, "load_settings", lambda: dict(mw.DEFAULTS))
+    saved = []
+    monkeypatch.setattr(mw, "save_settings", saved.append)
+    monkeypatch.setattr(mw, "apply_settings_to_environ", lambda *args, **kwargs: None)
+    dialog = mw.RuntimeSettingsDialog()
+    assert dialog._vars["CADENCE_TTS_BACKEND"].currentText() == "supertonic"
+    assert dialog._vars["CADENCE_KOKORO_DEVICE"].currentText() == "auto"
+    dialog._vars["CADENCE_TTS_BACKEND"].setCurrentText("kokoro")
+    dialog._vars["CADENCE_KOKORO_DEVICE"].setCurrentText("mps")
+    dialog._apply()
+    assert saved[0]["CADENCE_TTS_BACKEND"] == "kokoro"
+    assert saved[0]["CADENCE_KOKORO_DEVICE"] == "mps"
+    dialog.close()
+
+
+def test_existing_voice_control_tracks_backend_without_loading_models(qapp, monkeypatch):
+    from types import SimpleNamespace
+    from adapters.kokoro_backend import KokoroBackend
+
+    monkeypatch.setattr(KokoroBackend, "ensure_model", lambda *args: pytest.fail("Voice choices must not load a model"))
+    window = SimpleNamespace(voice_combo=mw.QtWidgets.QComboBox())
+    monkeypatch.setenv("CADENCE_TTS_BACKEND", "kokoro")
+    mw.MainWindow._refresh_voice_options(window)
+    assert window.voice_combo.currentText() == "auto"
+    assert window.voice_combo.findText("af_heart") >= 0
+    assert window.voice_combo.findText("ef_dora") >= 0
+    monkeypatch.setenv("CADENCE_TTS_BACKEND", "supertonic")
+    mw.MainWindow._refresh_voice_options(window)
+    assert window.voice_combo.currentText() == "M3"
+    assert window.voice_combo.findText("af_heart") == -1
+
+
+@pytest.mark.parametrize("stored,selected,expected", [("", "auto", "auto"), ("af_heart", "ef_dora", "af_heart")])
+def test_continue_import_uses_selection_only_without_saved_voice(qapp, stored, selected, expected):
+    from types import SimpleNamespace
+
+    calls = []
+    combo = mw.QtWidgets.QComboBox()
+    combo.addItem(selected)
+    window = SimpleNamespace(
+        _import_running=False, voice_combo=combo, log=lambda message: None,
+        _start_import=lambda source, voice: calls.append((source, voice)),
+    )
+    mw.MainWindow.continue_import_book(window, {"stored_epub_path": "book.epub", "voice": stored})
+    assert calls == [("book.epub", expected)]

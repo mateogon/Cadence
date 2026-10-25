@@ -710,3 +710,36 @@ def test_get_whisperx_python_search_order(tmp_path, monkeypatch, platform, avail
             BookManager._get_whisperx_python()
     else:
         assert BookManager._get_whisperx_python() == str(paths[expected])
+
+
+def test_tts_factory_imports_only_the_selected_backend(monkeypatch):
+    fake_supertonic = types.ModuleType("adapters.supertonic_backend")
+    constructed = []
+    fake_supertonic.SupertonicBackend = lambda model=None: constructed.append(model) or "supertonic"
+    monkeypatch.setitem(sys.modules, "adapters.supertonic_backend", fake_supertonic)
+    monkeypatch.setitem(sys.modules, "adapters.kokoro_backend", None)
+    from adapters.tts_factory import create_backend
+
+    assert create_backend("supertonic", model="supertonic-2") == "supertonic"
+    assert constructed == ["supertonic-2"]
+    with pytest.raises(ValueError, match="Unsupported TTS backend"):
+        create_backend("other")
+
+
+@pytest.mark.parametrize(
+    "words",
+    [
+        None,
+        [],
+        [{"word": "Hello", "start": float("nan"), "end": 1}],
+        [{"word": "Hello", "start": 0, "end": float("inf")}],
+        [{"word": "Hello", "start": -1, "end": 1}],
+        [{"word": "Hello", "start": 1, "end": 0}],
+        [{"word": " ", "start": 0, "end": 1}],
+        [{"word": "Hello"}],
+        [None],
+        [{"word": "Hello", "start": 1, "end": 2}, {"word": "world", "start": 0, "end": 1}],
+    ],
+)
+def test_native_timestamps_reject_unusable_word_times(words):
+    assert BookManager._normalize_native_word_timestamps(words) is None
