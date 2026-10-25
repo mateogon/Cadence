@@ -678,23 +678,22 @@ class BookManager:
 
     @staticmethod
     def _extract_opf_metadata(root, manifest):
-        title = ""
-        author = ""
-        cover = ""
-        language = ""
-        language_node = root.find(".//metadata/language")
-        if language_node is None:
-            language_node = root.find(".//metadata/{http://purl.org/dc/elements/1.1/}language")
-        if language_node is not None and language_node.text:
-            language = str(language_node.text).strip()
-        title_node = root.find(".//metadata/title") or root.find(".//title")
-        if title_node is not None and title_node.text:
-            title = str(title_node.text).strip()
+        def metadata_values(field):
+            metadata_node = root.find(".//{*}metadata")
+            if metadata_node is None:
+                metadata_node = root
+            return [
+                node.text.strip()
+                for node in metadata_node.findall(f".//{{*}}{field}")
+                if node is not None and node.text and node.text.strip()
+            ]
 
-        author_nodes = root.findall(".//metadata/creator") or root.findall(".//creator")
-        authors = [str(n.text).strip() for n in author_nodes if n is not None and n.text and str(n.text).strip()]
-        if authors:
-            author = ", ".join(authors)
+        titles = metadata_values("title")
+        languages = metadata_values("language")
+        title = titles[0] if titles else ""
+        author = ", ".join(metadata_values("creator"))
+        language = languages[0] if languages else ""
+        cover = ""
 
         cover_id = ""
         for meta_node in root.findall(".//metadata/meta"):

@@ -609,3 +609,28 @@ def test_run_streaming_pipeline_rejects_unsupported_stored_backend(tmp_path):
             is_cancelled=lambda: False,
             log=lambda msg: None,
         )
+
+
+@pytest.mark.parametrize("opf_namespace", ["", ' xmlns="http://www.idpf.org/2007/opf"'])
+def test_extract_opf_metadata_reads_namespaced_dublin_core_fields(opf_namespace):
+    root = ET.fromstring(
+        f'<package{opf_namespace} xmlns:dc="http://purl.org/dc/elements/1.1/">'
+        '<metadata><dc:title> Libro </dc:title><dc:creator> Autor Uno </dc:creator>'
+        '<dc:creator>Autor Dos</dc:creator><dc:language> es-CL </dc:language>'
+        '</metadata></package>'
+    )
+
+    metadata = BookManager._extract_opf_metadata(root, {})
+
+    assert metadata["title"] == "Libro"
+    assert metadata["author"] == "Autor Uno, Autor Dos"
+    assert metadata["language"] == "es-CL"
+
+
+def test_extract_opf_metadata_preserves_found_leaf_title():
+    root = ET.fromstring(
+        '<package><title>Outside metadata</title>'
+        '<metadata><title>Canonical title</title></metadata></package>'
+    )
+
+    assert BookManager._extract_opf_metadata(root, {})["title"] == "Canonical title"
