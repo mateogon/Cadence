@@ -657,6 +657,8 @@ class BookManager:
             for txt in final_txt
             if (content_dir / f"{txt.stem}.json").exists()
             and (content_dir / f"{txt.stem}.json").stat().st_size > 0
+            and (audio_dir / f"{txt.stem}.wav").exists()
+            and (audio_dir / f"{txt.stem}.wav").stat().st_size > 0
         )
 
         if total_chapters > 0 and aligned_ready == total_chapters:
@@ -1721,13 +1723,22 @@ class BookManager:
 
             # --- FINALIZE METADATA ---
             log("Finalizing metadata...")
-            BookManager._finalize_metadata(
+            metadata = BookManager._finalize_metadata(
                 book_dir=book_dir,
                 content_dir=content_dir,
                 audio_dir=audio_dir,
                 metadata=metadata,
             )
                 
+            if metadata["status"] != "complete":
+                message = (
+                    f"Import failed: only {metadata['last_chapter']}/{metadata['total_chapters']} "
+                    "chapters have audio and alignment. Check the import log and resume."
+                )
+                log(message)
+                progress_callback(0.0, message)
+                return False
+
             progress_callback(1.0, "Ready!")
             log("Import process completed successfully.")
             return True

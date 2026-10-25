@@ -634,3 +634,17 @@ def test_extract_opf_metadata_preserves_found_leaf_title():
     )
 
     assert BookManager._extract_opf_metadata(root, {})["title"] == "Canonical title"
+
+
+def test_finalize_metadata_requires_audio_for_aligned_chapter(tmp_path):
+    content_dir = tmp_path / "content"
+    audio_dir = tmp_path / "audio"
+    content_dir.mkdir()
+    audio_dir.mkdir()
+    (content_dir / "ch_001.txt").write_text("Hola", encoding="utf-8")
+    (content_dir / "ch_001.json").write_text("[]", encoding="utf-8")
+
+    metadata = BookManager._finalize_metadata(tmp_path, content_dir, audio_dir, {})
+
+    assert metadata["status"] == "text_only"
+    assert metadata["last_chapter"] == 0
