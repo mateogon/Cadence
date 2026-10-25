@@ -132,20 +132,23 @@ def test_long_chapter_respects_package_per_call_limit(backend):
     assert wav.shape == (1, 8)
 
 
-@pytest.mark.parametrize("force_cpu, expected", [
-    ("0", ["CUDAExecutionProvider", "CPUExecutionProvider"]),
-    ("1", ["CPUExecutionProvider"]),
+@pytest.mark.parametrize("force_cpu, use_coreml, available, expected", [
+    ("0", "0", ["CUDAExecutionProvider", "CPUExecutionProvider"], ["CUDAExecutionProvider", "CPUExecutionProvider"]),
+    ("1", "0", ["CUDAExecutionProvider", "CPUExecutionProvider"], ["CPUExecutionProvider"]),
+    ("0", "0", ["CoreMLExecutionProvider", "CPUExecutionProvider"], ["CPUExecutionProvider"]),
+    ("0", "1", ["CoreMLExecutionProvider", "CPUExecutionProvider"], ["CoreMLExecutionProvider", "CPUExecutionProvider"]),
+    ("1", "1", ["CoreMLExecutionProvider", "CPUExecutionProvider"], ["CPUExecutionProvider"]),
+    ("0", "1", ["CPUExecutionProvider"], ["CPUExecutionProvider"]),
 ])
-def test_provider_patch_reaches_real_loader(tmp_path, monkeypatch, capsys, force_cpu, expected):
+def test_provider_patch_reaches_real_loader(tmp_path, monkeypatch, capsys, force_cpu, use_coreml, available, expected):
     import supertonic.loader as loader
 
     monkeypatch.setenv("CADENCE_FORCE_CPU", force_cpu)
+    monkeypatch.setenv("CADENCE_USE_COREML", use_coreml)
     monkeypatch.setenv("CADENCE_CUDA_ONLY", "0")
     monkeypatch.setenv("CADENCE_USE_TENSORRT", "0")
     monkeypatch.setattr(loader, "DEFAULT_ONNX_PROVIDERS", list(loader.DEFAULT_ONNX_PROVIDERS))
-    monkeypatch.setattr(generator.ort, "get_available_providers", lambda: [
-        "CUDAExecutionProvider", "CPUExecutionProvider",
-    ])
+    monkeypatch.setattr(generator.ort, "get_available_providers", lambda: available)
     captured = []
 
     def session(path, sess_options, providers):

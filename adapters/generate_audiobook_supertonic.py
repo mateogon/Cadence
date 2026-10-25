@@ -153,6 +153,7 @@ def init_tts_engine(model=None):
     # The 1.3.1 loader reads this module constant when creating ONNX sessions.
     force_cpu = os.getenv("CADENCE_FORCE_CPU", "").strip() == "1"
     use_tensorrt = os.getenv("CADENCE_USE_TENSORRT", "").strip() == "1"
+    use_coreml = os.getenv("CADENCE_USE_COREML", "0").strip() == "1"
     cuda_only = os.getenv("CADENCE_CUDA_ONLY", "").strip() == "1"
 
     if force_cpu:
@@ -163,6 +164,9 @@ def init_tts_engine(model=None):
         requested = ["CUDAExecutionProvider"]
     else:
         preferred = list(DEFAULT_ONNX_PROVIDER_ORDER)
+        # CoreML is opt-in: the measured Supertonic 3 workload is faster on CPU.
+        if use_coreml:
+            preferred.insert(0, "CoreMLExecutionProvider")
         if use_tensorrt:
             preferred = ["TensorrtExecutionProvider"] + preferred
         requested = [p for p in preferred if p in providers]
