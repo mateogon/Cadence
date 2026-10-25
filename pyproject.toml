@@ -30,6 +30,7 @@ gpu = [
 ]
 
 [dependency-groups]
+build = ["pyinstaller"]
 cpu = ["onnxruntime==1.24.1", "torch==2.6.0", "torchaudio==2.6.0"]
 dev = ["ruff", "mypy", "pytest", "pytest-mock", "pytest-qt", "pre-commit"]
 

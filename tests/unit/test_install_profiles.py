@@ -88,3 +88,18 @@ def test_runtime_metadata_overrides_preserve_other_upstream_dependencies(name):
     assert override["requires-python"] == metadata(name)["Requires-Python"]
     assert override["version"] == metadata(name)["Version"]
     assert set(override["provides-extra"]) == set(metadata(name).get_all("Provides-Extra"))
+
+
+def test_windows_release_profile_contains_gpu_runtime_and_build_tool():
+    environment = default_environment()
+    environment.update(sys_platform="win32", platform_machine="AMD64", python_version="3.12")
+    selected = {
+        requirement.name: requirement
+        for requirement in exported_requirements("--no-group", "cpu", "--extra", "gpu", "--group", "build")
+        if requirement.marker is None or requirement.marker.evaluate(environment)
+    }
+    assert "pyinstaller" in selected
+    assert "onnxruntime-gpu" in selected
+    assert "onnxruntime" not in selected
+    assert str(selected["torch"].specifier) == "==2.6.0+cu124"
+    assert str(selected["torchaudio"].specifier) == "==2.6.0+cu124"

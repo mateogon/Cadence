@@ -1,6 +1,0 @@
-pytest
-ruff
-pre-commit
-mypy
-pytest-mock
-pytest-qt
