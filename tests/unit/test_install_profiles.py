@@ -49,6 +49,7 @@ def test_locked_profiles_install_one_runtime_and_matching_torch(platform, machin
         for requirement in exported_requirements(*flags)
         if requirement.marker is None or requirement.marker.evaluate(environment)
     }
+    assert "kokoro" not in selected
     runtime = "onnxruntime-gpu" if gpu else "onnxruntime"
     assert {name for name in selected if name.startswith("onnxruntime")} == {runtime}
     assert str(selected[runtime].specifier) == "==1.24.1"
@@ -103,3 +104,34 @@ def test_windows_release_profile_contains_gpu_runtime_and_build_tool():
     assert "onnxruntime" not in selected
     assert str(selected["torch"].specifier) == "==2.6.0+cu124"
     assert str(selected["torchaudio"].specifier) == "==2.6.0+cu124"
+
+
+@pytest.mark.parametrize(
+    ("platform", "machine", "gpu"),
+    [
+        ("darwin", "arm64", False),
+        ("linux", "x86_64", False),
+        ("win32", "AMD64", False),
+        ("linux", "x86_64", True),
+        ("win32", "AMD64", True),
+    ],
+)
+def test_kokoro_extra_preserves_runtime_profiles_and_tokenizer_pins(platform, machine, gpu):
+    flags = ("--no-group", "cpu", "--extra", "gpu") if gpu else ()
+    environment = default_environment()
+    environment.update(sys_platform=platform, platform_machine=machine, python_version="3.12")
+    selected = {
+        requirement.name: requirement
+        for requirement in exported_requirements("--extra", "kokoro", *flags)
+        if requirement.marker is None or requirement.marker.evaluate(environment)
+    }
+    assert str(selected["kokoro"].specifier) == "==0.9.4"
+    assert str(selected["preshed"].specifier) == "==3.0.9"
+    assert selected["en-core-web-sm"].url.endswith("en_core_web_sm-3.8.0-py3-none-any.whl")
+    runtime = "onnxruntime-gpu" if gpu else "onnxruntime"
+    assert {name for name in selected if name.startswith("onnxruntime")} == {runtime}
+    suffix = "" if platform == "darwin" else "+cu124" if gpu else "+cpu"
+    for name in ("torch", "torchaudio"):
+        assert str(selected[name].specifier) == f"==2.6.0{suffix}"
+    assert str(selected["numpy"].specifier) == "==1.26.4"
+    assert str(selected["whisperx"].specifier) == "==3.3.1"
