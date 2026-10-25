@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Added
+- Reproducible MPS Kokoro benchmark with a fixed 20-block input and separate warm-up.
 - Optional Kokoro backend with MPS/CUDA/CPU selection, paragraph synthesis, native English word timestamps, and WhisperX fallback.
 - Backend-aware voices and saved backend/model/voice identity for resumable imports.
 - Base and Kokoro installation coverage on all three CI platforms.
@@ -18,6 +19,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Initial changelog tracking.
 
 ### Changed
+- Upgrade to WhisperX 3.8.6, Torch/Torchaudio 2.8.0, Torchvision 0.23.0, NumPy 2.2.6 and CUDA 12.8 wheels.
+- Pin pyannote.audio 4.0.2 to preserve restricted VAD loading and enable MPS fallback before dependency imports in all maintained entry points.
 - Pin Supertonic 1.3.1 and use Supertonic 3 by default (31 languages plus the `na` fallback).
 - Use package text validation and chunking for both desktop synthesis and the standalone adapter CLI.
 

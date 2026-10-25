@@ -48,3 +48,20 @@ uv run pytest -q tests/e2e/test_full_pipeline_real.py -m e2e
 - User-visible behavior changes are documented in README or docs.
 - Breaking config/runtime changes are called out in PR description.
 
+
+## Reproducible Kokoro benchmark
+
+After an English Kokoro import with `af_heart` has cached its model and voice,
+run on an Apple Silicon Mac:
+```bash
+uv run --locked --extra kokoro scripts/benchmark_kokoro.py --output library/benchmark-kokoro.json
+```
+The script uses the checked-in first 20 speech blocks from chapter I of
+[Alice's Adventures in Wonderland](https://www.gutenberg.org/ebooks/11), with
+`af_heart` at speed 1.05. It works from any current directory. It requires MPS
+and cached models, performs one warm-up call, and synchronizes MPS around the
+timed synthesis. Loading, warm-up, and JSON output are excluded. The result
+records versions, input hash, duration, elapsed time, RTF (time/audio), and
+speed (audio/time). Compare the same fixture, settings, and machine; avoid
+concurrent inference. The public-domain source chapter hash is recorded in the
+script. A failed benchmark does not authorize changing acceptance thresholds.
