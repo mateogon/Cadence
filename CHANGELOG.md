@@ -7,6 +7,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Added
+- Optional Kokoro backend with MPS/CUDA/CPU selection, paragraph synthesis, native English word timestamps, and WhisperX fallback.
+- Backend-aware voices and saved backend/model/voice identity for resumable imports.
+- Base and Kokoro installation coverage on all three CI platforms.
 - Locked uv installation with mutually exclusive CPU/GPU ONNX profiles and full Ubuntu, Windows, and Apple Silicon macOS CI.
 - Opt-in CoreML synthesis; CPU remains the Mac default after same-chapter measurements.
 - Supertonic model, speed and inference-step controls in runtime settings.

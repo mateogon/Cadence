@@ -12,8 +12,14 @@
   - Library UI, player UI, runtime settings dialogs.
 - `system/book_manager.py`
   - Import orchestration, chapter extraction/synthesis/alignment flow.
-- `adapters/supertonic_backend.py`
-  - TTS backend wrapper and chunked synthesis behavior.
+- `adapters/tts_factory.py`
+  - Lazily selects the backend from the saved book identity or the new-book setting.
+- `adapters/supertonic_backend.py` + `adapters/kokoro_backend.py`
+  - Synthesis, voice/device selection, and atomic audio writes. Kokoro returns
+    `SynthesisResult` with audio and optional chapter-relative word timestamps.
+  - BookManager remaps native words onto the original text and writes the same
+    alignment JSON used by the reader. Missing native times use WhisperX.
+  - A saved WAV without JSON resumes through WhisperX without resynthesis.
 - `system/whisperx_align_worker.py` + `system/whisperx_align_cli.py`
   - Persistent worker and fallback single-run alignment paths.
 - `system/runtime_settings.py`
