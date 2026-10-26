@@ -6,6 +6,7 @@ book_positions_ms), so both readers resume at the same place. Settings that only
 web reader has live under the "web_reader" key.
 """
 
+import hashlib
 import json
 import math
 import os
@@ -16,6 +17,7 @@ import time
 from pathlib import Path
 
 from system.book_manager import LIBRARY_PATH, BookManager
+from webui import importer
 
 PLAYER_SETTINGS_FILE = Path("player_settings.json")
 WEB_DEFAULTS = {
@@ -61,6 +63,68 @@ def _title_from_text(text):
 class Api:
     def __init__(self, server):
         self._server = server
+        self._window = None
+        self._samples = importer.Samples()
+        self._imports = importer.ImportJob()
+        self._previews = {}
+
+    # --- import -------------------------------------------------------------------
+
+    def choose_file(self):
+        import webview
+        paths = self._window.create_file_dialog(
+            webview.FileDialog.OPEN, file_types=("Books (*.epub;*.mobi;*.azw3)",))
+        return self.preview(paths[0]) if paths else None
+
+    def preview(self, path):
+        info = importer.preview(path)
+        cover_bytes = info.pop("cover_bytes", None)
+        info["cover_url"] = None
+        if cover_bytes:
+            suffix = Path(info["cover"]).suffix.lower() or ".jpg"
+            target = LIBRARY_PATH / ".samples" / "covers" / (hashlib.sha256(cover_bytes).hexdigest()[:16] + suffix)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists():
+                target.write_bytes(cover_bytes)
+            info["cover_url"] = self._server.media_url(target)
+        if not info["paragraphs"]:
+            info["paragraphs"] = [importer.FALLBACK_SAMPLE]
+        self._previews[info["path"]] = info
+        return info
+
+    def engines(self, language):
+        return importer.engines(str(language or ""))
+
+    def sample(self, engine, voice, model, language, text):
+        if engine not in {"kokoro", "supertonic"}:
+            raise ValueError("Unknown engine.")
+        return self._sample_view(self._samples.request(engine, str(voice), model, str(language or ""), text))
+
+    def sample_state(self, key):
+        state = self._samples.state(str(key))
+        return self._sample_view(state) if state else None
+
+    def _sample_view(self, state):
+        view = {"key": state["key"], "state": state["state"], "error": state.get("error")}
+        if state["state"] == "ready":
+            view["url"] = self._server.media_url(state["path"])
+        return view
+
+    def start_import(self, path, engine, voice, model):
+        if engine not in {"kokoro", "supertonic"}:
+            raise ValueError("Unknown engine.")
+        preview = self._previews.get(str(path)) or {}
+        # A book already in the library resumes with its stored model, which may predate the current list.
+        if engine == "supertonic" and model not in importer.SUPERTONIC_MODELS and not preview.get("exists"):
+            raise ValueError("Unknown Supertonic model.")
+        title = preview.get("title")
+        return self._imports.start(str(path), engine, str(voice), model if engine == "supertonic" else None, title)
+
+    def import_status(self):
+        return self._imports.status()
+
+    def cancel_import(self):
+        self._imports.cancel()
 
     # --- library ------------------------------------------------------------------
 

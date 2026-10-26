@@ -55,17 +55,142 @@ async function showLibrary() {
   savePosition(true);
   audio.pause();
   S.screen = "library";
-  S.books = await call("books");
-  const cards = S.books.map((b) => {
+  [S.books, S.importStatus] = await Promise.all([call("books"), call("import_status")]);
+  renderLibrary();
+}
+
+function renderLibrary() {
+  const job = S.importStatus;
+  const importing = job && (job.state === "running" || Date.now() / 1000 - (job.finished || 0) < 30) ? job : null;
+  const cards = S.books.filter((b) => !(importing && importing.state === "running" && b.id === importing.book_id)).map((b) => {
     const pct = b.chapters ? Math.round(100 * Math.max(0, b.current_chapter - 1) / b.chapters) : 0;
     const status = b.ready < b.chapters ? `${b.ready} of ${b.chapters} chapters ready` : b.current_chapter ? `Chapter ${b.current_chapter} of ${b.chapters}` : `${b.chapters} chapters · not started`;
     return `<button class="tile" data-open="${esc(b.id)}"><div class="cv" style="${coverStyle(b)}">${b.cover_url ? "" : esc(b.title)}</div>
       <div class="t">${esc(b.title)}</div><div class="a">${esc(b.author)}</div>
       ${b.current_chapter ? `<div class="pbar"><i style="width:${pct}%"></i></div>` : ""}<div class="st">${esc(status)}</div></button>`;
   }).join("");
-  $("#app").innerHTML = `<div class="head"><div class="brand"><span class="logo">${icon("book", 15)}</span>Cadence</div><div class="ttl"></div><span class="muted small">Web reader prototype</span><button class="ib" data-act="theme-cycle" title="Theme">${icon(S.settings.theme === "dark" ? "sun" : "moon", 18)}</button></div>
-    <div class="lib"><div class="wrap"><h1>Library</h1><div class="muted">${S.books.length} books</div>
-    ${S.books.length ? `<div class="grid">${cards}</div>` : `<div class="empty">No books yet. Import one with the Qt app for now.</div>`}</div></div>`;
+  $("#app").innerHTML = `<div class="head"><div class="brand"><span class="logo">${icon("book", 15)}</span>Cadence</div><div class="ttl"></div>
+      <button class="ib" data-act="theme-cycle" title="Theme">${icon(S.settings.theme === "dark" ? "sun" : "moon", 18)}</button>
+      <button class="btn primary" data-act="import">${icon("plus")}Import book</button></div>
+    <div class="lib"><div class="wrap"><div class="lhead"><div><h1>Library</h1><div class="muted">${S.books.length} books · drop an EPUB anywhere to import it</div></div></div>
+    ${importing ? importingCard(importing) : ""}
+    ${cards ? `<div class="grid">${cards}</div>` : `<div class="empty">No books yet. Click “Import book” or drop an EPUB here.</div>`}</div></div>`;
+}
+
+function importingCard(job) {
+  const book = S.books.find((b) => b.id === job.book_id);
+  const ready = book ? book.ready : 0, total = book ? book.chapters : 0;
+  // BookManager's overall estimate restarts between steps; chapters ready is what a reader can use.
+  const pct = total ? Math.round(100 * ready / total) : 2;
+  const state = { running: `${ready} of ${total || "…"} chapters ready`, done: "Imported", failed: "Import failed", cancelled: "Import stopped" }[job.state];
+  return `<div class="importing"><div class="mini" style="${coverStyle(book || { title: job.title })}"></div>
+    <div style="min-width:0"><b>${esc(job.title)}</b> <span class="muted small">· ${esc(job.engine === "kokoro" ? "Kokoro" : "Supertonic")} · ${esc(job.voice)}</span>
+      <div class="msg">${esc(state)}${job.state === "running" ? ` · ${esc(job.message)}` : job.state === "failed" ? ` · ${esc(job.log.at(-1) || "")}` : ""}</div>
+      ${job.state === "running" ? `<div class="pbar"><i style="width:${pct}%"></i></div>` : ""}</div>
+    <div class="acts">${ready ? `<button class="btn primary" data-open="${esc(job.book_id)}">${job.state === "running" ? "Start reading" : "Read"}</button>` : ""}
+      ${job.state === "running" ? `<button class="btn" data-act="cancel-import">Stop</button>` : ""}</div></div>`;
+}
+
+// ------------------------------------------------------------------ import flow
+
+const LANG_NAMES = { en: "English", es: "Spanish", fr: "French", de: "German", it: "Italian", pt: "Portuguese", ja: "Japanese", zh: "Chinese", hi: "Hindi", ko: "Korean", ru: "Russian", nl: "Dutch", pl: "Polish", sv: "Swedish", tr: "Turkish", uk: "Ukrainian", ar: "Arabic", id: "Indonesian", vi: "Vietnamese" };
+function languageName(tag) {
+  if (!tag) return "Unknown language";
+  const [base, region] = tag.toLowerCase().split(/[-_]/);
+  return (LANG_NAMES[base] || base.toUpperCase()) + (region ? ` (${region.toUpperCase()})` : "");
+}
+const sampleAudio = new Audio();
+sampleAudio.addEventListener("ended", () => { if (S.imp) { S.imp.playing = null; renderImport(); } });
+
+async function openImport(path) {
+  S.imp = { loading: true };
+  renderImport();
+  try {
+    const info = path ? await call("preview", path) : await call("choose_file");
+    if (!info) { S.imp = null; renderImport(); return; }
+    const engines = await call("engines", info.language);
+    const stored = info.stored, engine = engines.find((e) => e.id === stored?.engine) || engines.find((e) => e.available) || engines[0];
+    S.imp = { info, engines, engine: engine.id, voice: stored?.voice || engine.voices?.[0]?.id, model: stored?.model || engine.models[0] || null,
+              para: 0, samples: {}, playing: null };
+  } catch { S.imp = null; }
+  renderImport();
+}
+window.onBookDropped = (path) => { document.body.classList.remove("dragging"); openImport(path); };
+
+function renderImport() {
+  let layer = $("#layer");
+  if (!S.imp) { layer.innerHTML = ""; sampleAudio.pause(); return; }
+  if (S.imp.loading) { layer.innerHTML = `<div class="backdrop"><div class="modal"><div class="mb" style="place-items:center;padding:40px"><span class="spin"></span><div class="muted">Reading the book…</div></div></div></div>`; return; }
+  const { info, engines } = S.imp, engine = engines.find((e) => e.id === S.imp.engine);
+  const locked = Boolean(info.stored);
+  const engineCard = (e) => `<button class="eng ${e.id === S.imp.engine ? "on" : ""}" data-engine="${e.id}" ${e.available && !(locked && e.id !== S.imp.engine) ? "" : "disabled"}><b>${esc(e.name)}</b><small>${esc(e.available ? e.summary : e.reason)}</small></button>`;
+  const voiceCard = (v) => {
+    const sample = S.imp.samples[v.id], playing = S.imp.playing === v.id;
+    return `<div class="vc ${v.id === S.imp.voice ? "on" : ""}" data-voice="${esc(v.id)}" role="button" tabindex="0"><span class="av" style="background:linear-gradient(135deg,hsl(${hue(v.id)} 80% 78%),hsl(${(hue(v.id) + 40) % 360} 60% 45%))"></span>
+      <div class="grow"><b>${esc(v.name)}${v.grade ? `<span class="grade" title="Quality grade from Kokoro">${esc(v.grade)}</span>` : ""}</b><small>${esc(v.detail)}</small></div>
+      <button class="pb" data-sample="${esc(v.id)}" title="Hear ${esc(v.name)} read this book">${sample?.state === "running" ? '<span class="spin"></span>' : icon(playing ? "pause" : "play", 12)}</button></div>`;
+  };
+  const paragraph = info.paragraphs[S.imp.para % info.paragraphs.length];
+  layer.innerHTML = `<div class="backdrop" data-act="close-import"><div class="modal" role="dialog" aria-label="Import book">
+    <div class="mh"><div class="mini" style="${coverStyle({ title: info.title, cover_url: info.cover_url })}"></div>
+      <div class="grow"><h2>${esc(info.title)}</h2><div class="muted small">${esc(info.author || "Unknown author")} · ${esc(languageName(info.language))} · ${esc(info.file)}</div>
+      ${locked ? `<div class="small" style="color:var(--accent)">Already in your library: the import continues it with its engine and voice.</div>` : ""}</div>
+      <button class="ib" data-act="close-import" title="Close">✕</button></div>
+    <div class="mb">
+      <div><div class="lbl2">Voice engine</div><div class="engines">${engines.map(engineCard).join("")}</div></div>
+      <div><div class="lbl2">Voice · hear it read this book${engine.models.length ? `<span>Model <select id="impModel" ${locked ? "disabled" : ""}>${engine.models.map((m) => `<option ${m === S.imp.model ? "selected" : ""}>${m}</option>`).join("")}</select></span>` : ""}</div>
+        <div class="voices">${(engine.voices || []).map(voiceCard).join("")}</div></div>
+      <div><div class="lbl2">Sample text<button class="btn" style="height:28px;font-size:12px" data-act="next-para">Another paragraph</button></div><p class="quote">${esc(paragraph)}</p></div>
+    </div>
+    <div class="mf"><span class="muted small">You can start reading when the first chapter is ready.</span>
+      <button class="btn primary big" style="margin-left:auto" data-act="start-import" ${S.imp.voice ? "" : "disabled"}>Import and start</button></div>
+  </div></div>`;
+  $("#impModel")?.addEventListener("change", (e) => changeImport({ model: e.target.value }));
+}
+
+// Engine, model and paragraph changes replace S.imp, so a sample still being made for the old choice is dropped.
+function changeImport(changes) {
+  sampleAudio.pause();
+  S.imp = { ...S.imp, ...changes, samples: {}, playing: null };
+  renderImport();
+}
+
+async function playSample(voice) {
+  if (S.imp.playing === voice) { sampleAudio.pause(); S.imp.playing = null; return renderImport(); }
+  const imp = S.imp, text = imp.info.paragraphs[imp.para % imp.info.paragraphs.length];
+  if (!imp.info.stored) imp.voice = voice;
+  let state = await call("sample", imp.engine, voice, imp.model, imp.info.language, text);
+  if (S.imp !== imp) return;
+  imp.samples[voice] = state; renderImport();
+  while (state && state.state === "running") { await new Promise((r) => setTimeout(r, 400)); state = await call("sample_state", state.key); }
+  if (S.imp !== imp) return;
+  imp.samples[voice] = state;
+  if (state?.state === "ready") { sampleAudio.src = state.url; sampleAudio.volume = S.settings.volume; sampleAudio.play(); imp.playing = voice; }
+  else toast(state?.error || "The sample could not be created.");
+  renderImport();
+}
+
+async function startImport() {
+  const imp = S.imp;
+  await call("start_import", imp.info.path, imp.engine, imp.voice, imp.model);
+  S.imp = null; renderImport();
+  toast(`Importing ${imp.info.title}. You can read as soon as the first chapter is ready.`);
+  await showLibrary();
+}
+
+async function importLoop() {
+  if (S.screen === "library" && !S.imp) {
+    const status = await api().import_status().catch(() => null);
+    const running = status && status.state === "running";
+    if (running || (S.importStatus && S.importStatus.state === "running")) {
+      const finished = S.importStatus?.state === "running" && status && status.state !== "running";
+      S.importStatus = status;
+      S.books = await api().books().catch(() => S.books);
+      renderLibrary();
+      if (finished) toast(status.state === "done" ? `Imported ${status.title}.` : status.state === "cancelled" ? "Import stopped." : "The import failed. Check the message on the card.");
+    }
+  }
+  setTimeout(importLoop, 1500);
 }
 
 // ------------------------------------------------------------------ book & chapter loading
@@ -162,6 +287,23 @@ function tick() {
     } else S.atEndSince = 0;
   }
   refreshTime();
+  // While a book is still importing, enable chapters as they become ready.
+  const now = performance.now();
+  if (S.book && S.book.chapters.some((c) => !c.ready) && now - (S.lastBookRefresh || 0) > 4000) {
+    S.lastBookRefresh = now;
+    refreshChapters();
+  }
+}
+
+async function refreshChapters() {
+  const fresh = await api().book(S.book.id).catch(() => null);
+  if (!fresh || !S.book || fresh.id !== S.book.id) return;
+  const changed = fresh.chapters.filter((c) => c.ready).length !== S.book.chapters.filter((c) => c.ready).length;
+  S.book.chapters = fresh.chapters;
+  if (!changed) return;
+  document.querySelectorAll(".chlist, .drawer").forEach((el) => (el.innerHTML = chaptersHtml()));
+  const next = S.book.chapters.some((c, k) => k > S.ch && c.ready);
+  document.querySelectorAll("[data-act=next-ch]").forEach((b) => (b.disabled = !next));
 }
 
 function stats(values) {
@@ -344,6 +486,11 @@ const actions = {
   "next-ch": () => { for (let k = S.ch + 1; k < S.book.chapters.length; k++) if (S.book.chapters[k].ready) return loadChapter(k, 0, !audio.paused); },
   size: (el) => setSetting({ font_size: Math.max(14, Math.min(36, S.settings.font_size + Number(el.dataset.v))) }),
   lh: (el) => setSetting({ line_height: Math.round(Math.max(1.3, Math.min(2.2, S.settings.line_height + Number(el.dataset.v))) * 10) / 10 }),
+  import: () => openImport(),
+  "close-import": (el, e) => { if (e.target === el || el.tagName === "BUTTON") { S.imp = null; renderImport(); } },
+  "next-para": () => changeImport({ para: S.imp.para + 1 }),
+  "start-import": () => startImport(),
+  "cancel-import": async () => { await call("cancel_import"); toast("Stopping after the current step…"); },
   mute: () => { audio.muted = !audio.muted; if (!audio.muted && S.settings.volume === 0) setSetting({ volume: 0.6 }); refreshControls(); },
   "theme-cycle": () => setSetting({ theme: THEMES[(THEMES.indexOf(S.settings.theme) + 1) % THEMES.length] }),
   pop: () => { S.pop = !S.pop; S.drawer = false; renderReader(); },
@@ -351,17 +498,21 @@ const actions = {
 };
 
 document.addEventListener("click", (e) => {
-  const el = e.target.closest("[data-act],[data-view],[data-set-theme],[data-ch],[data-open],.reading .w[data-k]");
+  const el = e.target.closest("[data-act],[data-view],[data-set-theme],[data-ch],[data-open],[data-engine],[data-voice],[data-sample],.reading .w[data-k]");
   if (!el || el.disabled) return;
+  if (el.dataset.sample) { e.stopPropagation(); return playSample(el.dataset.sample); }
+  if (el.dataset.engine) { const eng = S.imp.engines.find((x) => x.id === el.dataset.engine); return changeImport({ engine: eng.id, voice: eng.voices?.[0]?.id, model: eng.models[0] || null }); }
+  if (el.dataset.voice) { if (!S.imp.info.stored) S.imp.voice = el.dataset.voice; return renderImport(); }
   if (el.dataset.open) return openBook(el.dataset.open);
   if (el.dataset.view) { S.pop = false; S.drawer = false; return setSetting({ view: el.dataset.view }, true); }
   if (el.dataset.setTheme) return setSetting({ theme: el.dataset.setTheme });
   if (el.dataset.ch) { S.drawer = false; return loadChapter(Number(el.dataset.ch), (S.book.resume_ms[S.book.chapters[el.dataset.ch].stem] || 0) / 1000, !audio.paused); }
   if (el.dataset.k !== undefined) { audio.currentTime = S.starts[Number(el.dataset.k)] + S.settings.sync_offset_ms / 1000 + 0.001; syncTo(audio.currentTime, true); return; }
-  actions[el.dataset.act]?.(el);
+  actions[el.dataset.act]?.(el, e);
 });
 document.addEventListener("keydown", (e) => {
-  if (S.screen !== "reader" || e.target.closest?.("input:not([type=range]),textarea")) return;
+  if (S.imp && e.key === "Escape") { S.imp = null; return renderImport(); }
+  if (S.screen !== "reader" || S.imp || e.target.closest?.("input:not([type=range]),textarea")) return;
   if (e.key === " ") { e.preventDefault(); actions.play(); }
   else if (e.key === "ArrowLeft") { e.preventDefault(); e.shiftKey ? actions["prev-ch"]() : actions.back(); }
   else if (e.key === "ArrowRight") { e.preventDefault(); e.shiftKey ? actions["next-ch"]() : actions.fwd(); }
@@ -385,10 +536,17 @@ function chapterEnded() {
 audio.addEventListener("ended", chapterEnded);
 window.addEventListener("beforeunload", () => savePosition(true));
 
+let dragDepth = 0;
+document.addEventListener("dragenter", (e) => { if (e.dataTransfer?.types?.includes("Files")) { dragDepth++; document.body.classList.add("dragging"); } });
+document.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) document.body.classList.remove("dragging"); });
+document.addEventListener("drop", () => { dragDepth = 0; document.body.classList.remove("dragging"); });
+document.addEventListener("dragover", (e) => e.preventDefault());
+
 async function start() {
   S.settings = await call("settings");
   applySettings();
   await showLibrary();
   requestAnimationFrame(tick);
+  setTimeout(importLoop, 1500);
 }
 if (window.pywebview?.api) start(); else window.addEventListener("pywebviewready", start);
