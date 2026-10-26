@@ -1616,10 +1616,15 @@ class BookManager:
         return True
 
     @staticmethod
-    def import_book(epub_path, voice, progress_callback, log_callback=None, cancel_check=None):
+    def import_book(epub_path, voice, progress_callback, log_callback=None, cancel_check=None,
+                    backend=None, model=None):
         """
         Runs the full pipeline in a background thread.
         1. Extract EPUB -> 2. Generate Audio -> 3. Align Timestamps
+
+        backend and model choose the synthesizer for a new book; when they are None the
+        CADENCE_TTS_BACKEND and CADENCE_TTS_MODEL settings apply. A book that already has
+        stored values keeps them.
         """
         def log(msg):
             if log_callback: log_callback(msg)
@@ -1725,11 +1730,12 @@ class BookManager:
 
                 stored_metadata = metadata
                 tts_backend = str(stored_metadata.get("tts_backend") or (
-                    "supertonic" if metadata_path.exists() else os.getenv("CADENCE_TTS_BACKEND", "supertonic")
+                    "supertonic" if metadata_path.exists()
+                    else (backend or os.getenv("CADENCE_TTS_BACKEND", "supertonic"))
                 )).strip() or "supertonic"
                 tts_model = stored_metadata.get("tts_model") or (
                     KOKORO_MODEL if tts_backend == "kokoro" else (
-                        os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
+                        model or os.getenv("CADENCE_TTS_MODEL", "supertonic-3").strip() or "supertonic-3"
                     )
                 )
                 language = str((extracted_meta or {}).get("language", "")).strip()

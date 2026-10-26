@@ -193,6 +193,25 @@ export CADENCE_WHISPERX_PYTHON="/path/to/venv_whisperx/bin/python"
 uv run main.py
 ```
 
+### Web reader prototype (experimental)
+
+A new reader runs in a native window through pywebview. It opens the same library and
+keeps the same reading positions as the Qt reader. It has four views: Study, Page, Focus
+and One word (RSVP).
+
+```bash
+uv run --extra web main.py --web
+```
+
+To import a book, click **Import book** or drop an EPUB on the window. Choose the engine
+(Kokoro or Supertonic 3) and a voice, and listen to a sample of the book's own text before
+you start. Kokoro voices appear only when Cadence starts with `--extra kokoro`. A book that
+is already in the library continues with its stored engine and voice.
+
+Volume and the Light / Sepia / Dark theme are in the player bar and the header.
+
+Keys: Space play/pause, ← → 15 seconds, Shift+← → chapter, ↑ ↓ volume, M mute, T theme, 1–4 views, D sync statistics.
+
 ## Configuration
 Cadence uses `cadence_settings.json` (managed from the UI settings cog next to **Import Book**).
 

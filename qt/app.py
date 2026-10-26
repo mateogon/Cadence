@@ -17,6 +17,11 @@ def build_parser():
         action="store_true",
         help="Enable debug logging in Qt app.",
     )
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Open the prototype web reader instead of the Qt window (needs the web extra).",
+    )
     return parser
 
 
@@ -132,12 +137,16 @@ def prepare_qt_runtime():
 
 def main(argv=None):
     apply_settings_to_environ(load_settings())
+    args = build_parser().parse_args(argv)
+    if args.web:
+        from webui.app import run
+
+        return run(debug=args.debug)
     prepare_qt_runtime()
     from pathlib import Path
     from qt.qt_compat import QtWidgets, QtGui, QT_API
     from qt.main_window import MainWindow
 
-    args = build_parser().parse_args(argv)
 
     if os.name == "nt":
         try:
