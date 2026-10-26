@@ -203,7 +203,9 @@ and One word (RSVP). Import books with the Qt app for now.
 uv run --extra web main.py --web
 ```
 
-Keys: Space play/pause, ← → 15 seconds, Shift+← → chapter, 1–4 views, D sync statistics.
+Volume and the Light / Sepia / Dark theme are in the player bar and the header.
+
+Keys: Space play/pause, ← → 15 seconds, Shift+← → chapter, ↑ ↓ volume, M mute, T theme, 1–4 views, D sync statistics.
 
 ## Configuration
 Cadence uses `cadence_settings.json` (managed from the UI settings cog next to **Import Book**).

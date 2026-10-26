@@ -38,6 +38,7 @@ function applySettings() {
   root.style.setProperty("--fs", s.font_size + "px");
   root.style.setProperty("--lh", s.line_height);
   audio.playbackRate = s.playback_speed;
+  audio.volume = s.volume;
 }
 let saveSettingsTimer = null;
 function setSetting(changes, rerender = false) {
@@ -62,7 +63,7 @@ async function showLibrary() {
       <div class="t">${esc(b.title)}</div><div class="a">${esc(b.author)}</div>
       ${b.current_chapter ? `<div class="pbar"><i style="width:${pct}%"></i></div>` : ""}<div class="st">${esc(status)}</div></button>`;
   }).join("");
-  $("#app").innerHTML = `<div class="head"><div class="brand"><span class="logo">${icon("book", 15)}</span>Cadence</div><div class="ttl"></div><span class="muted small">Web reader prototype</span></div>
+  $("#app").innerHTML = `<div class="head"><div class="brand"><span class="logo">${icon("book", 15)}</span>Cadence</div><div class="ttl"></div><span class="muted small">Web reader prototype</span><button class="ib" data-act="theme-cycle" title="Theme">${icon(S.settings.theme === "dark" ? "sun" : "moon", 18)}</button></div>
     <div class="lib"><div class="wrap"><h1>Library</h1><div class="muted">${S.books.length} books</div>
     ${S.books.length ? `<div class="grid">${cards}</div>` : `<div class="empty">No books yet. Import one with the Qt app for now.</div>`}</div></div>`;
 }
@@ -233,7 +234,8 @@ function header(extra = "") {
   const ch = S.book.chapters[S.ch];
   return `<div class="head"><button class="ib" data-act="library" title="Library (Esc)">${icon("left")}</button>
     ${S.settings.view === "study" ? `<div class="brand"><span class="logo">${icon("book", 15)}</span>Cadence</div>` : ""}
-    <div class="ttl"><b>${esc(S.book.title)}</b> · ${esc(ch.title)}</div>${switcher()}${extra}</div>`;
+    <div class="ttl"><b>${esc(S.book.title)}</b> · ${esc(ch.title)}</div>${switcher()}
+    <button class="ib" data-act="theme-cycle" title="Theme: ${THEME_LABEL[S.settings.theme]} (T)">${icon(S.settings.theme === "dark" ? "sun" : "moon", 18)}</button>${extra}</div>`;
 }
 function playerHtml(compact = false) {
   const ch = S.book.chapters[S.ch], hasPrev = S.book.chapters.slice(0, S.ch).some((c) => c.ready), hasNext = S.book.chapters.slice(S.ch + 1).some((c) => c.ready);
@@ -242,10 +244,12 @@ function playerHtml(compact = false) {
       <button data-act="fwd" title="Forward 15 s (→)">${icon("f15", 20)}</button><button data-act="next-ch" ${hasNext ? "" : "disabled"} title="Next chapter">${icon("next", 18)}</button></div>`;
   const scrub = `<div class="scrub"><span id="tEl">0:00</span><input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position"><span id="tRem">0:00</span></div>`;
   const speed = `<button class="sp" data-act="speed" title="Speed">${S.settings.playback_speed}×</button>`;
-  if (compact) return `<div class="player">${controls}${scrub}<div class="ctl">${speed}</div></div>`;
+  const volume = `<div class="vol"><button data-act="mute" title="Mute (M)">${icon(volumeIcon(), 18)}</button><input type="range" id="vol" min="0" max="100" value="${Math.round(S.settings.volume * 100)}" aria-label="Volume"></div>`;
+  if (compact) return `<div class="player">${controls}${scrub}<div class="ctl">${volume}${speed}</div></div>`;
   return `<div class="player"><div class="np"><div class="mini" style="${coverStyle(S.book)}"></div><div><b>${esc(ch.title)}</b><small>${esc(S.book.title)}</small></div></div>
-    <div class="mid">${controls}${scrub}</div><div class="rt">${speed}</div></div>`;
+    <div class="mid">${controls}${scrub}</div><div class="rt">${volume}${speed}</div></div>`;
 }
+function volumeIcon() { return audio.muted || S.settings.volume === 0 ? "volx" : S.settings.volume < 0.5 ? "vol1" : "vol2"; }
 function chaptersHtml() {
   const ready = S.book.chapters.filter((c) => c.ready).length;
   return `<div class="h"><b>${esc(S.book.title)}</b><div class="muted small">${S.book.chapters.length} chapters · ${ready} ready</div></div>` +
@@ -254,7 +258,7 @@ function chaptersHtml() {
 }
 function appearanceHtml() {
   const s = S.settings;
-  const theme = (id, bg, fg, border = "") => `<button data-set-theme="${id}" class="${s.theme === id ? "on" : ""}" style="background:${bg};color:${fg};${border}">Aa</button>`;
+  const theme = (id, bg, fg, border = "") => `<button data-set-theme="${id}" class="${s.theme === id ? "on" : ""}" style="background:${bg};color:${fg};${border}"><span>Aa</span><small>${THEME_LABEL[id]}</small></button>`;
   return `<div class="box"><div class="lbl">Theme</div><div class="themes">${theme("light", "#fff", "#111", "border-color:#e4e4e7")}${theme("sepia", "#f8f1e3", "#4a3a2a")}${theme("dark", "#151517", "#eee")}</div>
       <div class="steps"><span class="muted">Text size</span><div class="seg"><button data-act="size" data-v="-1">A−</button><button data-act="size" data-v="1">A+</button></div></div>
       <div class="steps"><span class="muted">Line spacing</span><div class="seg"><button data-act="lh" data-v="-0.1">−</button><button data-act="lh" data-v="0.1">+</button></div></div></div>
@@ -298,6 +302,8 @@ function bindRanges() {
     seek.addEventListener("input", () => { S.seeking = true; $("#tEl").textContent = clock(seek.value / 1000 * audio.duration); });
     seek.addEventListener("change", () => { audio.currentTime = seek.value / 1000 * audio.duration; S.seeking = false; syncTo(audio.currentTime, true); });
   }
+  const vol = $("#vol");
+  if (vol) vol.addEventListener("input", () => { audio.muted = false; setSetting({ volume: Number(vol.value) / 100 }); });
   const offset = $("#offset");
   if (offset) offset.addEventListener("input", () => { setSetting({ sync_offset_ms: Number(offset.value) }); $("#offV").textContent = `${offset.value > 0 ? "+" : ""}${offset.value} ms`; });
 }
@@ -312,6 +318,9 @@ function refreshTime() {
 function refreshControls() {
   document.querySelectorAll("[data-act=play]").forEach((b) => (b.innerHTML = icon(audio.paused ? "play" : "pause", 20)));
   document.querySelectorAll("[data-act=speed]").forEach((b) => (b.textContent = S.settings.playback_speed + "×"));
+  document.querySelectorAll("[data-act=mute]").forEach((b) => (b.innerHTML = icon(volumeIcon(), 18)));
+  document.querySelectorAll("#vol").forEach((r) => (r.value = audio.muted ? 0 : Math.round(S.settings.volume * 100)));
+  document.querySelectorAll("[data-act=theme-cycle]").forEach((b) => { b.innerHTML = icon(S.settings.theme === "dark" ? "sun" : "moon", 18); b.title = `Theme: ${THEME_LABEL[S.settings.theme]} (T)`; });
   document.querySelectorAll("[data-set-theme]").forEach((b) => b.classList.toggle("on", b.dataset.setTheme === S.settings.theme));
 }
 function showDebug(on) {
@@ -322,6 +331,8 @@ function showDebug(on) {
 
 // ------------------------------------------------------------------ actions
 
+const THEME_LABEL = { light: "Light", sepia: "Sepia", dark: "Dark" };
+const THEMES = ["light", "sepia", "dark"];
 const SPEEDS = [0.8, 1, 1.1, 1.25, 1.5, 1.75, 2];
 const actions = {
   library: () => showLibrary(),
@@ -333,6 +344,8 @@ const actions = {
   "next-ch": () => { for (let k = S.ch + 1; k < S.book.chapters.length; k++) if (S.book.chapters[k].ready) return loadChapter(k, 0, !audio.paused); },
   size: (el) => setSetting({ font_size: Math.max(14, Math.min(36, S.settings.font_size + Number(el.dataset.v))) }),
   lh: (el) => setSetting({ line_height: Math.round(Math.max(1.3, Math.min(2.2, S.settings.line_height + Number(el.dataset.v))) * 10) / 10 }),
+  mute: () => { audio.muted = !audio.muted; if (!audio.muted && S.settings.volume === 0) setSetting({ volume: 0.6 }); refreshControls(); },
+  "theme-cycle": () => setSetting({ theme: THEMES[(THEMES.indexOf(S.settings.theme) + 1) % THEMES.length] }),
   pop: () => { S.pop = !S.pop; S.drawer = false; renderReader(); },
   drawer: () => { S.drawer = !S.drawer; S.pop = false; renderReader(); },
 };
@@ -348,10 +361,13 @@ document.addEventListener("click", (e) => {
   actions[el.dataset.act]?.(el);
 });
 document.addEventListener("keydown", (e) => {
-  if (S.screen !== "reader" || e.target.closest("input:not([type=range]),textarea")) return;
+  if (S.screen !== "reader" || e.target.closest?.("input:not([type=range]),textarea")) return;
   if (e.key === " ") { e.preventDefault(); actions.play(); }
   else if (e.key === "ArrowLeft") { e.preventDefault(); e.shiftKey ? actions["prev-ch"]() : actions.back(); }
   else if (e.key === "ArrowRight") { e.preventDefault(); e.shiftKey ? actions["next-ch"]() : actions.fwd(); }
+  else if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); audio.muted = false; setSetting({ volume: Math.round(Math.max(0, Math.min(1, S.settings.volume + (e.key === "ArrowUp" ? 0.1 : -0.1))) * 10) / 10 }); }
+  else if (e.key.toLowerCase() === "m" && !e.metaKey) actions.mute();
+  else if (e.key.toLowerCase() === "t" && !e.metaKey) actions["theme-cycle"]();
   else if (e.key === "Escape") { if (S.pop || S.drawer) { S.pop = S.drawer = false; renderReader(); } else showLibrary(); }
   else if (["1", "2", "3", "4"].includes(e.key)) setSetting({ view: VIEWS[Number(e.key) - 1][0] }, true);
   else if (e.key.toLowerCase() === "d" && !e.metaKey) showDebug(!S.debug);

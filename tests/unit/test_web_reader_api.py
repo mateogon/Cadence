@@ -81,7 +81,7 @@ def test_saving_positions_keeps_other_qt_settings(env):
 
 
 @pytest.mark.parametrize("changes", [{"view": "grid"}, {"theme": "neon"}, {"font_size": 90},
-                                     {"sync_offset_ms": 9000}, {"unknown": 1}])
+                                     {"sync_offset_ms": 9000}, {"volume": 1.5}, {"unknown": 1}])
 def test_invalid_settings_are_rejected(env, changes):
     _, api, _ = env
     with pytest.raises(ValueError):

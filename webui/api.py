@@ -20,7 +20,7 @@ from system.book_manager import LIBRARY_PATH, BookManager
 PLAYER_SETTINGS_FILE = Path("player_settings.json")
 WEB_DEFAULTS = {
     "view": "study", "theme": "light", "font_size": 20, "line_height": 1.75,
-    "playback_speed": 1.0, "sync_offset_ms": 0,
+    "playback_speed": 1.0, "sync_offset_ms": 0, "volume": 1.0,
 }
 VIEWS = {"study", "page", "focus", "rsvp"}
 THEMES = {"light", "sepia", "dark"}
@@ -160,7 +160,7 @@ class Api:
         if "theme" in changes and changes["theme"] not in THEMES:
             raise ValueError("Unknown theme.")
         limits = {"font_size": (14, 36), "line_height": (1.3, 2.2), "playback_speed": (0.5, 2.5),
-                  "sync_offset_ms": (-500, 500)}
+                  "sync_offset_ms": (-500, 500), "volume": (0, 1)}
         for name, (low, high) in limits.items():
             if name in changes:
                 value = float(changes[name])
