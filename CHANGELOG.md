@@ -28,6 +28,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Use package text validation and chunking for both desktop synthesis and the standalone adapter CLI.
 
 ### Fixed
+- Align chapters when Cadence starts outside the project folder: WhisperX now receives absolute paths.
 - Read OPF title, author, and language across XML namespaces without discarding leaf elements.
 - Report import success only when every chapter has audio and alignment; preserve incomplete outputs for resume.
 - Discover Calibre on macOS and prefer the running Python environment for alignment.

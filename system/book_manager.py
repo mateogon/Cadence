@@ -1387,11 +1387,13 @@ class BookManager:
                 return False
 
             align_started = time.monotonic()
-            source_txt = chapter["txt"]
-            out_json = chapter["json"]
-            wav = chapter["wav"]
-            chapter_report = content_dir / f"{chapter['stem']}.whisperx_report.json"
-            raw_json = content_dir / f"{chapter['stem']}_raw.json"
+            # WhisperX runs with the project root as cwd, while library paths are relative
+            # to Cadence's cwd. Absolute paths keep both pointing at the same files.
+            source_txt = chapter["txt"].resolve()
+            out_json = chapter["json"].resolve()
+            wav = chapter["wav"].resolve()
+            chapter_report = (content_dir / f"{chapter['stem']}.whisperx_report.json").resolve()
+            raw_json = (content_dir / f"{chapter['stem']}_raw.json").resolve()
 
             log(f"Aligning {wav.name} with {source_txt.name}...")
             worker_msg = whisper_worker.align(
