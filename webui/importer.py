@@ -106,6 +106,17 @@ def preview(path):
     return info
 
 
+def cover_from_source(source_dir, member):
+    """Cover image bytes from the book's stored source EPUB, or None."""
+    for epub in sorted(Path(source_dir).glob("*.epub")):
+        try:
+            with zipfile.ZipFile(epub) as archive:
+                return archive.read(member)
+        except (KeyError, zipfile.BadZipFile, OSError):
+            continue
+    return None
+
+
 def kokoro_installed():
     return importlib.util.find_spec("kokoro") is not None
 

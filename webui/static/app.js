@@ -14,6 +14,7 @@ audio.preservesPitch = true;
 audio.webkitPreservesPitch = true;
 
 const $ = (sel, root = document) => root.querySelector(sel);
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const icon = (id, size) => `<svg class="i"${size ? ` style="width:${size}px;height:${size}px"` : ""}><use href="#${id}"/></svg>`;
 const api = () => window.pywebview.api;
@@ -64,7 +65,7 @@ function renderLibrary() {
   const importing = job && (job.state === "running" || Date.now() / 1000 - (job.finished || 0) < 30) ? job : null;
   const cards = S.books.filter((b) => !(importing && importing.state === "running" && b.id === importing.book_id)).map((b) => {
     const pct = b.chapters ? Math.round(100 * Math.max(0, b.current_chapter - 1) / b.chapters) : 0;
-    const status = b.ready < b.chapters ? `${b.ready} of ${b.chapters} chapters ready` : b.current_chapter ? `Chapter ${b.current_chapter} of ${b.chapters}` : `${b.chapters} chapters · not started`;
+    const status = b.ready < b.chapters ? `${b.ready} of ${plural(b.chapters, "chapter")} ready` : b.current_chapter ? `Chapter ${b.current_chapter} of ${b.chapters}` : `${plural(b.chapters, "chapter")} · not started`;
     return `<button class="tile" data-open="${esc(b.id)}"><div class="cv" style="${coverStyle(b)}">${b.cover_url ? "" : esc(b.title)}</div>
       <div class="t">${esc(b.title)}</div><div class="a">${esc(b.author)}</div>
       ${b.current_chapter ? `<div class="pbar"><i style="width:${pct}%"></i></div>` : ""}<div class="st">${esc(status)}</div></button>`;
@@ -82,7 +83,7 @@ function importingCard(job) {
   const ready = book ? book.ready : 0, total = book ? book.chapters : 0;
   // BookManager's overall estimate restarts between steps; chapters ready is what a reader can use.
   const pct = total ? Math.round(100 * ready / total) : 2;
-  const state = { running: `${ready} of ${total || "…"} chapters ready`, done: "Imported", failed: "Import failed", cancelled: "Import stopped" }[job.state];
+  const state = { running: total ? `${ready} of ${plural(total, "chapter")} ready` : "Reading chapters…", done: "Imported", failed: "Import failed", cancelled: "Import stopped" }[job.state];
   return `<div class="importing"><div class="mini" style="${coverStyle(book || { title: job.title })}"></div>
     <div style="min-width:0"><b>${esc(job.title)}</b> <span class="muted small">· ${esc(job.engine === "kokoro" ? "Kokoro" : "Supertonic")} · ${esc(job.voice)}</span>
       <div class="msg">${esc(state)}${job.state === "running" ? ` · ${esc(job.message)}` : job.state === "failed" ? ` · ${esc(job.log.at(-1) || "")}` : ""}</div>
@@ -394,7 +395,7 @@ function playerHtml(compact = false) {
 function volumeIcon() { return audio.muted || S.settings.volume === 0 ? "volx" : S.settings.volume < 0.5 ? "vol1" : "vol2"; }
 function chaptersHtml() {
   const ready = S.book.chapters.filter((c) => c.ready).length;
-  return `<div class="h"><b>${esc(S.book.title)}</b><div class="muted small">${S.book.chapters.length} chapters · ${ready} ready</div></div>` +
+  return `<div class="h"><b>${esc(S.book.title)}</b><div class="muted small">${plural(S.book.chapters.length, "chapter")} · ${ready} ready</div></div>` +
     S.book.chapters.map((c, k) => `<button class="ch ${k === S.ch ? "cur" : ""}" data-ch="${k}" ${c.ready ? "" : "disabled"}>
       ${c.ready ? `<span class="ok">${icon("check", 10)}</span>` : `<span class="wait"></span>`}<span class="t">${esc(c.title)}</span><span class="s">${c.seconds ? clock(c.seconds) : "waiting"}</span></button>`).join("");
 }
