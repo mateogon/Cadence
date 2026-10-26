@@ -14,6 +14,8 @@ audio.preservesPitch = true;
 audio.webkitPreservesPitch = true;
 
 const $ = (sel, root = document) => root.querySelector(sel);
+// Same mark as assets/branding/cadence-logo.svg; the tile colour follows the theme in app.css.
+const LOGO = '<svg viewBox="0 0 128 128" aria-hidden="true"><rect class="tile" x="1" y="1" width="126" height="126" rx="27"/><path d="M86.2 41.8A31 31 0 1 0 86.2 86.2" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round"/><circle cx="88" cy="64" r="8.5" fill="#6366f1"/></svg>';
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const icon = (id, size) => `<svg class="i"${size ? ` style="width:${size}px;height:${size}px"` : ""}><use href="#${id}"/></svg>`;
@@ -70,7 +72,7 @@ function renderLibrary() {
       <div class="t">${esc(b.title)}</div><div class="a">${esc(b.author)}</div>
       ${b.current_chapter ? `<div class="pbar"><i style="width:${pct}%"></i></div>` : ""}<div class="st">${esc(status)}</div></button>`;
   }).join("");
-  $("#app").innerHTML = `<div class="head"><div class="brand"><span class="logo">${icon("book", 15)}</span>Cadence</div><div class="ttl"></div>
+  $("#app").innerHTML = `<div class="head"><div class="brand"><span class="logo">${LOGO}</span>Cadence</div><div class="ttl"></div>
       <button class="ib" data-act="theme-cycle" title="Theme">${icon(S.settings.theme === "dark" ? "sun" : "moon", 18)}</button>
       <button class="btn primary" data-act="import">${icon("plus")}Import book</button></div>
     <div class="lib"><div class="wrap"><div class="lhead"><div><h1>Library</h1><div class="muted">${S.books.length} books · drop an EPUB anywhere to import it</div></div></div>
@@ -376,7 +378,7 @@ function switcher() {
 function header(extra = "") {
   const ch = S.book.chapters[S.ch];
   return `<div class="head"><button class="ib" data-act="library" title="Library (Esc)">${icon("left")}</button>
-    ${S.settings.view === "study" ? `<div class="brand"><span class="logo">${icon("book", 15)}</span>Cadence</div>` : ""}
+    ${S.settings.view === "study" ? `<div class="brand"><span class="logo">${LOGO}</span>Cadence</div>` : ""}
     <div class="ttl"><b>${esc(S.book.title)}</b> · ${esc(ch.title)}</div>${switcher()}
     <button class="ib" data-act="theme-cycle" title="Theme: ${THEME_LABEL[S.settings.theme]} (T)">${icon(S.settings.theme === "dark" ? "sun" : "moon", 18)}</button>${extra}</div>`;
 }

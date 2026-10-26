@@ -1,4 +1,7 @@
-![Cadence](assets/branding/cadence-badge.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/cadence-wordmark-dark.svg">
+  <img alt="Cadence: read along with any book" src="assets/branding/cadence-wordmark-light.svg" width="350">
+</picture>
 
 # Cadence
 
