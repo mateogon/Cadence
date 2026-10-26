@@ -9,3 +9,4 @@ player_settings.json
 cadence_settings.json
 .env
 .DS_Store
+.cadence-webview/

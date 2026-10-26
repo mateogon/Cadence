@@ -228,6 +228,15 @@ wheels = [
 ]
 
 [[package]]
+name = "bottle"
+version = "0.13.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/71/cca6167c06d00c81375fd668719df245864076d284f7cb46a694cbeb5454/bottle-0.13.4.tar.gz", hash = "sha256:787e78327e12b227938de02248333d788cfe45987edca735f8f88e03472c3f47", size = 98717, upload-time = "2025-06-15T10:08:59.439Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/f6/b55ec74cfe68c6584163faa311503c20b0da4c09883a41e8e00d6726c954/bottle-0.13.4-py2.py3-none-any.whl", hash = "sha256:045684fbd2764eac9cdeb824861d1551d113e8b683d8d26e296898d3dd99a12e", size = 103807, upload-time = "2025-06-15T10:08:57.691Z" },
+]
+
+[[package]]
 name = "cadence-reader"
 version = "0.1.0"
 source = { virtual = "." }
@@ -268,6 +277,9 @@ kokoro = [
     { name = "preshed", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
     { name = "spacy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
 ]
+web = [
+    { name = "pywebview", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
 
 [package.dev-dependencies]
 build = [
@@ -304,6 +316,7 @@ requires-dist = [
     { name = "pygame" },
     { name = "pyqt6", specifier = "==6.6.1" },
     { name = "pyqt6-qt6", specifier = "==6.6.3" },
+    { name = "pywebview", marker = "extra == 'web'", specifier = ">=6.2,<7" },
     { name = "soundfile" },
     { name = "spacy", marker = "extra == 'kokoro'", specifier = ">=3.8.16,<3.9" },
     { name = "supertonic", specifier = "==1.3.1" },
@@ -317,7 +330,7 @@ requires-dist = [
     { name = "watchfiles" },
     { name = "whisperx", specifier = "==3.8.6" },
 ]
-provides-extras = ["kokoro", "gpu"]
+provides-extras = ["kokoro", "web", "gpu"]
 
 [package.metadata.requires-dev]
 build = [{ name = "pyinstaller" }]
@@ -423,6 +436,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/27/fb/576f067976d320f5f0114a8d9fa1215425441bb35627b1993e5afd8111e5/cloudpickle-3.1.2.tar.gz", hash = "sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414", size = 22330, upload-time = "2025-11-03T09:25:26.604Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl", hash = "sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a", size = 22228, upload-time = "2025-11-03T09:25:25.534Z" },
+]
+
+[[package]]
+name = "clr-loader"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi", marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/46/7eea92b6aa2d68af78e049cbecec5f757f1aad44ecdecdc16bbad7eead51/clr_loader-0.3.1.tar.gz", hash = "sha256:2e073e9aaf49d1ae2f56ecba27987ad5fb68be4bcd9dd34a5bed8f0e4e128366", size = 86805, upload-time = "2026-04-18T17:49:44.287Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5e/da/ec1a6e36624000b6df0dd61183c42342ee5814c073315e802cadaad04d2f/clr_loader-0.3.1-py3-none-any.whl", hash = "sha256:cbad189de20d202a7d621956b0fc38049e13c9bf7ca2923441eff725cd121aa1", size = 55730, upload-time = "2026-04-18T17:49:42.99Z" },
 ]
 
 [[package]]
@@ -1824,6 +1849,12 @@ wheels = [
 ]
 
 [[package]]
+name = "proxy-tools"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/cf/77d3e19b7fabd03895caca7857ef51e4c409e0ca6b37ee6e9f7daa50b642/proxy_tools-0.1.0.tar.gz", hash = "sha256:ccb3751f529c047e2d8a58440d86b205303cf0fe8146f784d1cbcd94f0a28010", size = 2978, upload-time = "2014-05-05T21:02:24.606Z" }
+
+[[package]]
 name = "pyannote-audio"
 version = "4.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2031,6 +2062,79 @@ wheels = [
 ]
 
 [[package]]
+name = "pyobjc-core"
+version = "12.2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/78/abc4ce5920305780aeb36b4067a86253378b36e29ba96673a3deb02eb03a/pyobjc_core-12.2.2.tar.gz", hash = "sha256:3906452339cd06a3bb07df103c2511d4cb0f7a22d8771c0b802eba15d9a642b6", size = 1067701, upload-time = "2026-08-11T19:43:39.059Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/86/b2/bbf7f049880ab40d110e66f25122342a1f6c98d6fe3c59bb98985503c660/pyobjc_core-12.2.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:122e6ad302a2abf5d4d4adb0156db751600ddf2768441696cba17b31323085e7", size = 6427637, upload-time = "2026-08-11T14:51:36.038Z" },
+]
+
+[[package]]
+name = "pyobjc-framework-cocoa"
+version = "12.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/76/49c6da2c6a831020b4854ba20079d5a1030474bffc776b7b73c2eeff8c15/pyobjc_framework_cocoa-12.2.2.tar.gz", hash = "sha256:c96c0ef69a71afbbb0e6a7d594b455c5fe47d62e0db376ee7a2b4b828c16ace9", size = 3132831, upload-time = "2026-08-11T19:44:02.288Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fd/2f/b67e73d8bc367e03fe7861cd9c49fff9dcfa6db83bc0630c0adcfb25b7fa/pyobjc_framework_cocoa-12.2.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:e106f395531e67694376b0f1184612cbeea3ec8b9bf56b55ef41d026171d2a2d", size = 388117, upload-time = "2026-08-11T19:32:43.161Z" },
+]
+
+[[package]]
+name = "pyobjc-framework-quartz"
+version = "12.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-cocoa", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/b1/426a37c7ae37280b3ffca2571fb48f211946aee2f4ca31a603ed1943c4a7/pyobjc_framework_quartz-12.2.2.tar.gz", hash = "sha256:810f97b210cfd93704d240860286dfd6df09f9f1c52525fc5c2166723aea3f9e", size = 3218295, upload-time = "2026-08-11T19:45:15.189Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/e4/8be95d2ff850f82fb55b44c63333a00a920bf8a73642e7d9c2f3638a26d2/pyobjc_framework_quartz-12.2.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:7f668979d0c7320bf8f7ed6e030da578f93ab0f5dd619b295ec735cd8d5faa34", size = 219003, upload-time = "2026-08-11T19:40:24.425Z" },
+]
+
+[[package]]
+name = "pyobjc-framework-security"
+version = "12.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-cocoa", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c2/92/c304b7fc3a0fe7484a2a3cf25711e70c8fa2b6969d82f4010e35b9af2164/pyobjc_framework_security-12.2.2.tar.gz", hash = "sha256:33efab1ff7d18570148f8f3ddd44eca305f733aee00b9115d5263bef81018f65", size = 181827, upload-time = "2026-08-11T19:45:24.042Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/59/79722efbbb5cf6a313d364bb4faff39f9c165740e46acaa4d0a3d71c0f8c/pyobjc_framework_security-12.2.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:266f41995f2fc80660c8451bdb199a7e259a6cad02fbc1e0e2f69dd5576e2203", size = 41298, upload-time = "2026-08-11T19:41:27.54Z" },
+]
+
+[[package]]
+name = "pyobjc-framework-uniformtypeidentifiers"
+version = "12.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-cocoa", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/70/c6/31ac40c4d918baa36ca06d196bfec0f47f804a74684988cf424060469d98/pyobjc_framework_uniformtypeidentifiers-12.2.2.tar.gz", hash = "sha256:12f8ba77dcc949ffb9f0f48743cae326aebec8e69cb1ac55a1d1e04dca7bd59a", size = 20848, upload-time = "2026-08-11T19:45:37.634Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/79/c3/45ec69ed9fdcde5d0f229a031b610127c592d2c4674c3ff0e184d7f2741b/pyobjc_framework_uniformtypeidentifiers-12.2.2-py2.py3-none-any.whl", hash = "sha256:1dc6a538df07c410e4bfd6457adcb0b663a5e0df331905dbe135bcfd3f89ae57", size = 5045, upload-time = "2026-08-11T19:42:56.598Z" },
+]
+
+[[package]]
+name = "pyobjc-framework-webkit"
+version = "12.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-cocoa", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6f/1f/766e338197f7051c25f23cb0d350caa88234b31c3a759127f2cbb67f3376/pyobjc_framework_webkit-12.2.2.tar.gz", hash = "sha256:e5588df2a73b377b59a994cc2a78b467e4341f4e4d28b52e8671e21a2811d3c1", size = 333834, upload-time = "2026-08-11T19:45:42.708Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b9/76/344b197a89878e8b103727984f2815bc38393515be5bf63aa7b847c414e0/pyobjc_framework_webkit-12.2.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:ef37692f0280151bf8164a718e334a9b3cb0abfc5455be14172280de7e277505", size = 50371, upload-time = "2026-08-11T19:43:31.561Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2145,6 +2249,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pythonnet"
+version = "3.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "clr-loader", marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ef/34/98f38d7ca1e9eb684d297d1d6a9420f3f3a32f411eae82a7f25a2b783539/pythonnet-3.2.1.tar.gz", hash = "sha256:c86e8dd31268f6e0c48fcc4d6030041316d49ed2764a1cb6ea8c37876e07c572", size = 257852, upload-time = "2026-10-08T12:23:35.866Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/dc/c96a542079a69d3d091e91808fc8aaf9a0d5e2f8e73a63560e4379134bb6/pythonnet-3.2.1-cp311.cp312.cp313.cp314.cp315-none-any.whl", hash = "sha256:dd5668b74b0c903d9a24e1ba86f728fc490f8e919d56b3c24bf06739b9ee2b7f", size = 222572, upload-time = "2026-10-08T12:23:34.129Z" },
+]
+
+[[package]]
 name = "pytorch-lightning"
 version = "2.6.6"
 source = { registry = "https://pypi.org/simple" }
@@ -2180,6 +2296,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9b/80/6e61b1a91debf4c1b47d441f9a9d7fe2aabcdd9575ed70b2811474eb95c3/pytorch-metric-learning-2.9.0.tar.gz", hash = "sha256:27a626caf5e2876a0fd666605a78cb67ef7597e25d7a68c18053dd503830701f", size = 84530, upload-time = "2025-08-17T17:11:19.501Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/7d/73ef5052f57b7720cad00e16598db3592a5ef4826745ffca67a2f085d4dc/pytorch_metric_learning-2.9.0-py3-none-any.whl", hash = "sha256:d51646006dc87168f00cf954785db133a4c5aac81253877248737aa42ef6432a", size = 127801, upload-time = "2025-08-17T17:11:18.185Z" },
+]
+
+[[package]]
+name = "pywebview"
+version = "6.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bottle", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "proxy-tools", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-core", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-cocoa", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-quartz", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-security", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-uniformtypeidentifiers", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pyobjc-framework-webkit", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine != 'arm64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "pythonnet", marker = "(platform_machine == 'AMD64' and sys_platform == 'win32') or (platform_machine != 'AMD64' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+    { name = "typing-extensions", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'darwin' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'linux' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu') or (sys_platform == 'win32' and extra == 'extra-14-cadence-reader-gpu' and extra == 'group-14-cadence-reader-cpu')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/59/4a/05307135dafba67778669d194bd1a3822a7685ec9ee8a6d7e70856c1a551/pywebview-6.2.1.tar.gz", hash = "sha256:71b7136752e40824655304d938efb62014218d1a90bd8e87e1cbdb1ce9c466af", size = 513126, upload-time = "2026-04-15T09:02:16.595Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3d/25/9491695c22c4842c5b3903b4dc172e0eecf67a27c0af34a71512c9b76a0a/pywebview-6.2.1-py3-none-any.whl", hash = "sha256:9d07275f53894ab4d5e2e0e996227193e7187dec276d9b624dccbce029216b46", size = 525463, upload-time = "2026-04-15T09:02:10.186Z" },
 ]
 
 [[package]]

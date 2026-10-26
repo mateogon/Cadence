@@ -193,6 +193,18 @@ export CADENCE_WHISPERX_PYTHON="/path/to/venv_whisperx/bin/python"
 uv run main.py
 ```
 
+### Web reader prototype (experimental)
+
+A new reader runs in a native window through pywebview. It opens the same library and
+keeps the same reading positions as the Qt reader. It has four views: Study, Page, Focus
+and One word (RSVP). Import books with the Qt app for now.
+
+```bash
+uv run --extra web main.py --web
+```
+
+Keys: Space play/pause, ← → 15 seconds, Shift+← → chapter, 1–4 views, D sync statistics.
+
 ## Configuration
 Cadence uses `cadence_settings.json` (managed from the UI settings cog next to **Import Book**).
 
