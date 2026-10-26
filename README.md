@@ -1,248 +1,192 @@
 ![Cadence](assets/branding/cadence-badge.svg)
 
 # Cadence
-Cadence is an immersive reading pipeline: **book file -> chapter text -> audiobook audio -> word-level synced reader data**.
 
-## Overview
-- Imports EPUB/MOBI/AZW3 files (MOBI/AZW3 are converted to EPUB via Calibre) and extracts ordered chapter text.
-- Synthesizes chapter audio with [Supertonic 3](https://pypi.org/project/supertonic/1.3.1/) across 31 languages, or optional Kokoro.
-- Uses Kokoro native English word timestamps when available; otherwise aligns with WhisperX.
-- Plays back in a synced reader/player UI.
-- Uses a streaming chapter pipeline so reading can start before full import finishes.
+Cadence turns an ebook into an audiobook you can read along with. It reads the book aloud
+with a local voice and highlights each word as it is spoken. Synthesis and alignment run
+on your computer; the first run downloads the voice and alignment models.
 
-## Pipeline
-1. Source normalization: MOBI/AZW3 -> EPUB (Calibre, when needed)
-2. EPUB extraction (Calibre) -> `library/<book>/content/ch_XXX.txt`
-3. Per chapter: TTS synthesis (Supertonic or Kokoro) -> `library/<book>/audio/ch_XXX.wav`
-4. Per chapter: Alignment (Kokoro native timestamps or WhisperX) -> `library/<book>/content/ch_XXX.json`
-5. Player can read chapters as soon as each chapter has audio + alignment.
+![The Study view: chapter list, reading pane with the spoken word highlighted, voice and theme panel, player](docs/media/web-reader-study.webp)
 
-## Import Behavior
-- Cadence now runs **chapter-by-chapter interleaved processing**:
-  - If a chapter already has `.wav`, Cadence skips synthesis and aligns it.
-  - If `.wav` is missing, Cadence synthesizes first, then aligns.
-  - If `.wav` and `.json` both exist, Cadence skips that chapter.
-- This makes resume robust after interruptions and enables immediate reading while import is still running.
-- Import reports success only when every chapter has non-empty audio and alignment. Failed chapters remain available for resume and the reader shows the import as incomplete.
-- Library cards update live with ready counts (`Audio x/y`, `Alignment x/y`) during import.
-- EPUB `dc:language` is saved in `metadata.json` and passed to Supertonic. Regional tags such as `es-CL` use their base code; missing or unsupported codes use `na`.
-- New books store `tts_backend` and `tts_model`. Resume uses the book's stored backend, voice and model even if the current settings change.
-- Older books without TTS identity keep their existing audio. For missing chapters, Cadence warns that the historical model is unknown, uses the configured Supertonic model once, and stores that continuation configuration for later resumes. This does not establish which model produced older WAV files. Select the known older model before continuing if needed.
+- **Import** EPUB, MOBI or AZW3 books. Cadence splits them into chapters.
+- **Listen** with Kokoro (natural voices) or Supertonic 3 (31 languages).
+- **Read along**: every word has a timestamp, so the text follows the voice.
+- **Start reading early**: each chapter is ready as soon as its audio and timing exist.
+- **Resume anywhere**: an interrupted import continues from the last finished chapter.
 
-## Read While Importing
-Cadence processes books one chapter at a time, not as one long batch.
+![Word highlight following the voice](docs/media/web-word-sync.gif)
 
-- As soon as a chapter finishes synthesis + alignment, it is immediately readable.
-- You can open the reader and start from available chapters while the rest of the book continues importing.
-- If import is interrupted, re-import resumes from existing chapter outputs instead of starting over.
+## Four ways to read
 
-## UI Preview
-![Library While Importing](docs/media/library-importing.png)
-![RSVP View](docs/media/rsvp.gif)
-![Context View](docs/media/context.gif)
+**Study** (above) shows chapters, text and settings side by side. Three other views
+change how much you see at once. Switch with the buttons in the header or the keys 1–4.
 
-## Requirements
-- Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
-- Apple Silicon macOS, Windows 10/11 x64, or Linux x64.
-- [Calibre](https://calibre-ebook.com/download) for importing books.
-- FFmpeg in `PATH` for playback speed control and WhisperX.
-- An NVIDIA GPU is optional on Windows/Linux. The default install uses CPU wheels.
+| | |
+|---|---|
+| ![Page view in the sepia theme](docs/media/web-reader-page-sepia.webp) | ![Focus view in the dark theme](docs/media/web-reader-focus-dark.webp) |
+| **Page**: only the text and a floating player. | **Focus**: the current paragraph stays in the center; the rest fades. |
+| ![One word view in the dark theme](docs/media/web-reader-rsvp-dark.webp) | ![Library with book covers and reading progress](docs/media/web-library.webp) |
+| **One word** (RSVP): one word at a time, with the sentence below. | **Library**: covers from the EPUB and your progress in each book. |
 
-## Install
-### macOS (Apple Silicon)
-1. Install FFmpeg with Homebrew:
+Every view has Light, Sepia and Dark themes, text size and line spacing.
+
+## Choose a voice before you import
+
+Click **Import book**, or drop an EPUB on the window. Cadence shows the book's cover and
+language, and lets you hear each voice read a paragraph of that book before you start.
+
+![Import dialog: engine cards, voice grid with quality grades, sample paragraph](docs/media/web-import-dialog.webp)
+
+The library shows the import while it runs. Open the book as soon as its first chapter is
+ready.
+
+![Library with an import in progress](docs/media/web-library-importing.webp)
+
+| Engine | Languages | Word timing | Notes |
+|---|---|---|---|
+| **Kokoro** | English, Spanish, French, Hindi, Italian, Portuguese, Japanese, Mandarin | From the voice itself (English) | Optional install (`--extra kokoro`). Uses MPS on Apple Silicon, CUDA on NVIDIA. |
+| **Supertonic 3** | 31 languages | Measured after synthesis with WhisperX | Default engine. Ten voices (F1–F5, M1–M5). |
+
+## Quick start (macOS, Apple Silicon)
+
+1. Install FFmpeg and [uv](https://docs.astral.sh/uv/getting-started/installation/):
    ```bash
-   brew install ffmpeg
+   brew install ffmpeg uv
    ```
 2. Install the [Calibre app](https://calibre-ebook.com/download_osx) in `/Applications`.
-3. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if needed.
-4. Install Cadence from the repository root:
+3. Install Cadence with both voice engines and the web reader:
    ```bash
-   uv sync --locked
+   uv sync --locked --extra kokoro --extra web
    ```
-5. Start Cadence:
+4. Start the reader:
    ```bash
-   uv run main.py
+   uv run --extra kokoro --extra web main.py --web
    ```
+
+Keep the same `--extra` flags on every `uv run`. A plain `uv run` removes the optional
+packages again.
+
+> The web reader is new. The original Qt app is still the default: `uv run main.py`
+> starts it. Both use the same library and remember the same reading position.
+
+### Keyboard
+
+| Key | Action |
+|---|---|
+| Space | Play or pause |
+| ← / → | Back or forward 15 seconds |
+| Shift + ← / → | Previous or next chapter |
+| ↑ / ↓ | Volume |
+| M | Mute |
+| T | Next theme |
+| 1–4 | Study, Page, Focus, One word |
+| D | Sync statistics |
+| Esc | Close the dialog or panel, or go back to the library |
+
+## Install on other platforms
+
+Requirements on every platform:
+
+- Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
+- [Calibre](https://calibre-ebook.com/download) for importing books.
+- FFmpeg in `PATH` for playback speed and WhisperX.
+- Apple Silicon macOS, Windows 10/11 x64, or Linux x64. An NVIDIA GPU is optional.
 
 ### Windows
-1. Install Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
-2. Install [Calibre](https://calibre-ebook.com/download_windows) at its default location, or set `CADENCE_CALIBRE_PATH`.
+
+1. Install Python 3.12 and uv.
+2. Install [Calibre](https://calibre-ebook.com/download_windows) at its default location,
+   or set `CADENCE_CALIBRE_PATH`.
 3. Install FFmpeg and add its directory to `PATH`.
-4. Install Cadence from the repository root:
+4. Install and start Cadence from the repository root:
    ```powershell
-   uv sync --locked
-   ```
-5. Start Cadence:
-   ```powershell
-   uv run main.py
+   uv sync --locked --extra kokoro --extra web
+   uv run --extra kokoro --extra web main.py --web
    ```
 
+The web reader uses WebView2 on Windows. It is not yet tested there; the Qt app
+(`uv run main.py`) is.
+
 ### Linux
-1. Install Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/).
-2. Install Calibre, FFmpeg, and the Qt system libraries for your distribution. On Ubuntu:
+
+1. Install Python 3.12 and uv.
+2. Install Calibre, FFmpeg and the Qt system libraries. On Ubuntu:
    ```bash
    sudo apt-get install calibre ffmpeg libegl1 libgl1 libpulse0 libxkbcommon-x11-0 libxcb-cursor0
    ```
-3. Install Cadence from the repository root:
+3. Install and start Cadence from the repository root:
    ```bash
-   uv sync --locked
-   ```
-4. Start Cadence:
-   ```bash
-   uv run main.py
+   uv sync --locked --extra kokoro
+   uv run --extra kokoro main.py
    ```
 
-### Runtime profiles
-`uv sync --locked` creates `.venv` with CPU ONNX Runtime and matching Torch/Torchaudio 2.8.0 and Torchvision 0.23.0.
-It also installs the development tools. Existing `venv` directories are kept.
+### NVIDIA GPU (Windows and Linux)
 
-For NVIDIA GPUs on Windows/Linux, install and run the GPU profile:
 ```bash
 uv sync --locked --no-group cpu --extra gpu
 uv run --no-group cpu --extra gpu main.py
 ```
-This selects ONNX Runtime GPU 1.24.1 and the official CUDA 12.8 Torch/Torchaudio/Torchvision wheels.
-The machine also needs compatible NVIDIA drivers and ONNX Runtime's [CUDA/cuDNN runtime libraries](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements).
-Use the same profile flags for each `uv run`; a plain `uv run` restores the default CPU profile.
-The `cpu` group and `gpu` extra conflict, so uv rejects a request for both.
-The GPU extra is for Windows/Linux; use the default profile on macOS.
 
-### Optional Kokoro backend
-1. Install the optional backend:
-   ```bash
-   uv sync --locked --extra kokoro
-   ```
-2. Start with the same extra enabled:
-   ```bash
-   uv run --extra kokoro main.py
-   ```
-3. In runtime settings, set `CADENCE_TTS_BACKEND` to `kokoro`. Leave
-   `CADENCE_KOKORO_DEVICE` at `auto` to select CUDA, then MPS, then CPU.
-4. Select `auto` in the existing voice selector to use a voice for the book's
-   language, or choose a compatible Kokoro voice explicitly.
+This selects ONNX Runtime GPU and the CUDA 12.8 Torch wheels. Add `--extra kokoro` and
+`--extra web` as needed, on both commands. See
+[Runtime profiles and the lock](docs/TECHNICAL.md#runtime-profiles-and-the-lock).
 
-The optional install pins Kokoro 0.9.4, `preshed==3.0.9`, and the English spaCy
-model. The preshed pin avoids the English tokenizer failure seen on macOS.
-Keep `--extra kokoro` on each `uv run`; plain `uv run` removes the optional packages.
-On Windows/Linux with NVIDIA, combine it with `--no-group cpu --extra gpu`.
-First synthesis downloads `hexgrad/Kokoro-82M` and the selected voice.
+### Kokoro in the Qt app
 
-Kokoro supports English, Spanish, French, Hindi, Italian, Portuguese, Japanese,
-and Mandarin voices. Japanese and Mandarin need additional upstream language
-packages; the supplied extra includes English and eSpeak-based tokenization.
-For Japanese, start with `uv run --extra kokoro --with 'misaki[ja]' main.py`;
-use `misaki[zh]` for Mandarin. These optional language paths are not covered by CI.
-An unsupported book language or incompatible explicit voice stops the import
-with an error. Existing Supertonic voice selections map to Kokoro's language
-default for a new book. New English books default to `af_heart` (US/general English) or `bf_emma` (UK).
-Other languages retain catalog order. Resume always keeps the book's saved backend and voice.
+The web reader asks for the engine on each import. In the Qt app, set
+`CADENCE_TTS_BACKEND` to `kokoro` in the runtime settings. Leave `CADENCE_KOKORO_DEVICE`
+at `auto` to select CUDA, then MPS, then CPU. Select `auto` in the voice selector to use
+a voice for the book's language.
 
-Cadence packs complete sentences into paragraph blocks of about 450 characters.
-It preserves common abbreviations and decimals when finding sentence boundaries.
-A sentence longer than 450 characters remains whole; Kokoro handles its internal
-splits. This avoids added mid-sentence pauses from arbitrary word wrapping and
-inference overhead from synthesizing every short sentence separately. Blank lines
-preserve paragraph boundaries. Kokoro's native English
-word times accumulate the duration of every audio fragment before the next
-fragment starts. Missing or invalid times trigger WhisperX for the whole chapter,
-with a log entry. Non-English synthesis currently uses that fallback.
+## How it works
 
-MPS enables PyTorch's CPU fallback for unsupported operators before loading
-Torch. `CADENCE_KOKORO_DEVICE=cpu` forces CPU; an unavailable explicit accelerator
-falls back to CPU with a log message. `CADENCE_TTS_SPEED` applies to both backends;
-`CADENCE_TTS_MODEL`, `CADENCE_TTS_STEPS`, and `CADENCE_TTS_MAX_CHARS` configure
-Supertonic only. Kokoro's model identity is saved with each book.
+1. **Normalize**: MOBI and AZW3 become EPUB through Calibre.
+2. **Extract**: each chapter becomes `library/<book>/content/ch_XXX.txt`.
+3. **Synthesize**: Kokoro or Supertonic writes `library/<book>/audio/ch_XXX.wav`.
+4. **Align**: Kokoro's own word times, or WhisperX, write `library/<book>/content/ch_XXX.json`.
+5. **Read**: a chapter opens as soon as it has audio and alignment.
 
-The lockfile uses version-specific [uv metadata overrides](https://docs.astral.sh/uv/concepts/resolution/#dependency-metadata)
-for Supertonic 1.3.1 and faster-whisper 1.2.1. Each package requests the CPU `onnxruntime`
-distribution upstream, although both ONNX distributions expose the same API. The overrides
-remove only that requirement. Cadence's selected profile supplies exactly one runtime.
-Use uv for installation; plain pip does not apply these overrides.
-
-Supertonic uses CPU by default on macOS. Measurements on an Apple M3 Pro used a
-71-word Spanish chapter (M3 voice, 8 steps, speed 1.05, seed 42; 26.54 seconds of audio).
-CPU synthesis took
-7.33–8.38 seconds over three runs (median 7.58). CoreML took 36.00 seconds on its
-first synthesis; its second had not finished after 140 seconds and was stopped.
-Model loading took 0.74 seconds for CPU and 10.66 seconds for CoreML.
-These measurements apply to this chapter and machine. To try CoreML when available,
-set `CADENCE_USE_COREML=1` before starting Cadence; `CADENCE_FORCE_CPU=1` takes priority.
-
-WhisperX 3.8.6 uses CPU with `int8` when CUDA is unavailable. Faster-whisper has no MPS backend.
-Cadence verifies the bundled VAD checkpoint hash and temporarily permits its known metadata classes during loading. Torch keeps `weights_only` loading enabled; no local wrapper is needed. External WhisperX environments must provide the locked compatible stack, including pyannote.audio 4.0.2. Other pyannote versions are rejected before VAD loading: later releases force unrestricted checkpoint loading internally.
-
-The updated stack pins NumPy 2.2.6 and pyannote.audio 4.0.2. On a Mac with
-Homebrew FFmpeg 8, TorchCodec 0.7 can warn that its FFmpeg 4–7 libraries cannot
-load. Cadence does not use that decoder: WhisperX decodes with the FFmpeg CLI
-and passes waveform tensors to pyannote's supported in-memory path. The normal
-import requires no FFmpeg downgrade or Hugging Face token. TorchCodec's direct
-file decoding is not supported by this FFmpeg 8 setup.
-
-Calibre lookup uses `CADENCE_CALIBRE_PATH`, then `PATH`, the macOS app path, and the Windows default. An invalid explicit override fails instead of silently selecting another installation. Alignment uses `CADENCE_WHISPERX_PYTHON` first, then the running interpreter (`sys.executable`), `.venv`, and `venv`.
-To keep a separate WhisperX environment, set its interpreter before starting Cadence:
-```powershell
-$env:CADENCE_WHISPERX_PYTHON="C:\path\to\venv_whisperx\Scripts\python.exe"
-```
-```bash
-export CADENCE_WHISPERX_PYTHON="/path/to/venv_whisperx/bin/python"
-```
-
-## Run
-```bash
-uv run main.py
-```
-
-### Web reader prototype (experimental)
-
-A new reader runs in a native window through pywebview. It opens the same library and
-keeps the same reading positions as the Qt reader. It has four views: Study, Page, Focus
-and One word (RSVP).
-
-```bash
-uv run --extra web main.py --web
-```
-
-To import a book, click **Import book** or drop an EPUB on the window. Choose the engine
-(Kokoro or Supertonic 3) and a voice, and listen to a sample of the book's own text before
-you start. Kokoro voices appear only when Cadence starts with `--extra kokoro`. A book that
-is already in the library continues with its stored engine and voice.
-
-Volume and the Light / Sepia / Dark theme are in the player bar and the header.
-
-Keys: Space play/pause, ← → 15 seconds, Shift+← → chapter, ↑ ↓ volume, M mute, T theme, 1–4 views, D sync statistics.
+Steps 3 and 4 run one chapter at a time, so the first chapter is ready long before the
+last one. Each book keeps its engine, model and voice in `metadata.json`, and a resumed
+import uses them again. [Technical notes](docs/TECHNICAL.md) has the details.
 
 ## Configuration
-Cadence uses `cadence_settings.json` (managed from the UI settings cog next to **Import Book**).
 
-- Settings are persisted automatically when you click **Apply**.
-- Settings are applied immediately to the current app process.
-- `CADENCE_*` environment variables are still usable for one-off CLI/script runs.
+Cadence keeps its settings in `cadence_settings.json`. In the Qt app, edit them with the
+settings button next to **Import Book**. **Apply** saves them and applies them to the
+running app. `CADENCE_*` environment
+variables also work for a single run.
 
-Useful keys:
-- `CADENCE_EXTRACT_WORKERS`
-- `CADENCE_SYNTH_WORKERS`
-- `CADENCE_TTS_MAX_CHARS`
-- `CADENCE_TTS_BACKEND`: `supertonic` (default) or `kokoro`.
-- `CADENCE_KOKORO_DEVICE`: `auto` (default), `cpu`, `cuda`, or `mps`.
-- `CADENCE_TTS_MODEL`: `supertonic-3` by default; `supertonic-2` and `supertonic` remain available.
-- `CADENCE_TTS_SPEED`: `0.7`–`2.0`, default `1.05`.
-- `CADENCE_TTS_STEPS`: integer `1`–`100`, default `8`.
-- `CADENCE_FORCE_CPU`
-- `CADENCE_CUDA_ONLY`
-- `CADENCE_WHISPERX_MODEL`
-- `CADENCE_WHISPERX_BATCH_SIZE`
-- `CADENCE_WHISPERX_COMPUTE_TYPE`
-- `CADENCE_WHISPERX_DEVICE`
-- `CADENCE_WHISPERX_PYTHON`
-- `CADENCE_CALIBRE_PATH`
+| Setting | Values |
+|---|---|
+| `CADENCE_TTS_BACKEND` | `supertonic` (default) or `kokoro`, for new books |
+| `CADENCE_TTS_MODEL` | `supertonic-3` (default), `supertonic-2` or `supertonic` |
+| `CADENCE_TTS_SPEED` | `0.7`–`2.0`, default `1.05` |
+| `CADENCE_TTS_STEPS` | `1`–`100`, default `8` (Supertonic) |
+| `CADENCE_TTS_MAX_CHARS` | Supertonic chunk length |
+| `CADENCE_KOKORO_DEVICE` | `auto` (default), `cpu`, `cuda` or `mps` |
+| `CADENCE_EXTRACT_WORKERS`, `CADENCE_SYNTH_WORKERS` | Parallel workers |
+| `CADENCE_FORCE_CPU`, `CADENCE_CUDA_ONLY`, `CADENCE_USE_COREML` | Device selection |
+| `CADENCE_WHISPERX_MODEL`, `_BATCH_SIZE`, `_COMPUTE_TYPE`, `_DEVICE`, `_PYTHON` | WhisperX alignment |
+| `CADENCE_CALIBRE_PATH` | Path to `ebook-convert` |
 
-The runtime settings dialog validates the TTS speed and steps before applying them. Supertonic's package handles text chunking through `max_chunk_length`; `CADENCE_TTS_MAX_CHARS` controls that value. A single sentence beyond the package's 100,000-character input limit is not supported.
+The runtime settings dialog validates the TTS speed and steps before it applies them.
 
-WhisperX detects each chapter's language for alignment. Its diagnostic `ch_XXX.whisperx_report.json` records the detected language; the reader's alignment JSON format is unchanged.
+## The Qt app
 
-## Project Docs
-- [Contributing](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
+The original desktop app is built with Qt. It has its own library view, a context reader
+and an RSVP mode.
+
+| | |
+|---|---|
+| ![Qt library while importing](docs/media/library-importing.png) | ![Qt RSVP view](docs/media/rsvp.gif) |
+
+![Qt context view](docs/media/context.gif)
+
+## Project docs
+
+- [Technical notes](docs/TECHNICAL.md): import rules, engines, WhisperX, lock and web reader
 - [Architecture](docs/ARCHITECTURE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)

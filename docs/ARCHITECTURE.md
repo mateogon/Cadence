@@ -5,11 +5,18 @@
 2. Text extraction to chapter files (`content/ch_XXX.txt`)
 3. Chapter synthesis (`audio/ch_XXX.wav`)
 4. Word alignment (`content/ch_XXX.json`)
-5. Reader playback and chapter navigation in Qt UI
+5. Reader playback and chapter navigation in the Qt UI or the web reader
 
 ## Main Components
 - `qt/main_window.py`
   - Library UI, player UI, runtime settings dialogs.
+- `webui/` (web reader, `main.py --web`)
+  - `app.py` opens the pywebview window; `server.py` serves the page and library media on
+    127.0.0.1 with a session token.
+  - `api.py` holds the functions the page calls: books, chapters, positions, settings,
+    import. `importer.py` reads EPUB previews, lists engines and voices, makes voice
+    samples and runs one import at a time through `BookManager.import_book`.
+  - `static/` holds the page (HTML, CSS, JavaScript).
 - `system/book_manager.py`
   - Import orchestration, chapter extraction/synthesis/alignment flow.
 - `adapters/tts_factory.py`
@@ -35,4 +42,6 @@
 ## Runtime Settings
 - Persisted in `cadence_settings.json`
 - Player view preferences persisted in `player_settings.json`
+- Web reader preferences in the `web_reader` key of `player_settings.json`
+- Voice samples and cached covers in `library/.samples/`
 

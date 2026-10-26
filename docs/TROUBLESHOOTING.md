@@ -36,6 +36,21 @@ Fix:
 - Ensure only one Qt binding path is active.
 - Set `CADENCE_QT_API=pyqt6` for consistency with default setup.
 
+## Web Reader: Kokoro Is Not Available
+Symptom:
+- The import dialog shows the Kokoro card as not installed.
+
+Fix:
+- Start the reader with both extras: `uv run --extra kokoro --extra web main.py --web`.
+  A `uv run` without `--extra kokoro` removes the Kokoro packages.
+
+## Web Reader: Window Does Not Open
+Symptom:
+- `--web` prints that pywebview is missing.
+
+Fix:
+- Add the web extra: `uv run --extra web main.py --web`.
+
 ## Test Runtime
 Symptom:
 - UI tests fail in headless environments.
