@@ -81,12 +81,7 @@ class Api:
         cover_bytes = info.pop("cover_bytes", None)
         info["cover_url"] = None
         if cover_bytes:
-            suffix = Path(info["cover"]).suffix.lower() or ".jpg"
-            target = LIBRARY_PATH / ".samples" / "covers" / (hashlib.sha256(cover_bytes).hexdigest()[:16] + suffix)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if not target.exists():
-                target.write_bytes(cover_bytes)
-            info["cover_url"] = self._server.media_url(target)
+            info["cover_url"] = self._server.media_url(self._store_cover(cover_bytes, info["cover"]))
         if not info["paragraphs"]:
             info["paragraphs"] = [importer.FALLBACK_SAMPLE]
         self._previews[info["path"]] = info
@@ -261,11 +256,30 @@ class Api:
         return folder
 
     def _cover_url(self, folder, meta):
+        """metadata.json stores the cover's path inside the source EPUB; serve a cached copy of it."""
         cover = str(meta.get("cover") or "").strip()
         if not cover:
             return None
         path = (folder / cover).resolve()
-        return self._server.media_url(path) if path.is_file() else None
+        if path.is_file() and path.is_relative_to(folder):
+            return self._server.media_url(path)
+        cached = LIBRARY_PATH / ".samples" / "covers" / f"book-{hashlib.sha256(f'{folder.name}|{cover}'.encode()).hexdigest()[:16]}{Path(cover).suffix.lower()}"
+        if not cached.is_file():
+            data = importer.cover_from_source(folder / "source", cover)
+            if not data:
+                return None
+            cached.parent.mkdir(parents=True, exist_ok=True)
+            cached.write_bytes(data)
+        return self._server.media_url(cached)
+
+    @staticmethod
+    def _store_cover(data, name):
+        suffix = Path(name).suffix.lower() or ".jpg"
+        target = LIBRARY_PATH / ".samples" / "covers" / (hashlib.sha256(data).hexdigest()[:16] + suffix)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not target.exists():
+            target.write_bytes(data)
+        return target
 
     @staticmethod
     def _duration(wav):

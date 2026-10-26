@@ -805,7 +805,8 @@ class CadenceMarkWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(42, 42)
-        self._logo_path = Path("assets/branding/cadence-logo.svg")
+        # The Qt UI is dark; the dark variant keeps the tile visible on it.
+        self._logo_path = Path("assets/branding/cadence-logo-dark.svg")
         self._pixmap = QtGui.QPixmap()
         self._load_logo()
 
@@ -1337,7 +1338,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logo_label = QtWidgets.QLabel("")
         logo_label.setObjectName("WindowLogo")
         logo_label.setFixedSize(23, 23)
-        logo_path = Path("assets/branding/cadence-logo.svg")
+        logo_path = Path("assets/branding/cadence-logo-dark.svg")
         if logo_path.exists():
             pix = QtGui.QPixmap(str(logo_path))
             if pix.isNull():

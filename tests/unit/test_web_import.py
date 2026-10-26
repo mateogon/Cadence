@@ -148,3 +148,16 @@ def test_sample_folder_is_not_listed_as_a_book(env):
     _, api = env
     (book_manager.LIBRARY_PATH / ".samples").mkdir()
     assert api.books() == []
+
+
+def test_library_covers_come_from_the_stored_source_epub(env):
+    tmp, api = env
+    book = book_manager.LIBRARY_PATH / "A_Tale"
+    (book / "source").mkdir(parents=True)
+    _epub(book / "source" / "A Tale.epub")
+    (book / "metadata.json").write_text(json.dumps({"title": "A Tale", "cover": "OEBPS/cover.jpg"}))
+    url = api.books()[0]["cover_url"]
+    assert url.startswith(f"/media/{api._server.token}/.samples/covers/book-")
+    assert url == api.books()[0]["cover_url"]
+    (book / "metadata.json").write_text(json.dumps({"title": "A Tale", "cover": "OEBPS/missing.jpg"}))
+    assert api.books()[0]["cover_url"] is None

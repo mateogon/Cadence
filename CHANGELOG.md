@@ -7,6 +7,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Added
+- New C-monogram logo in black, white and the app's indigo accent, with a dark variant and README wordmarks.
+- Web reader (`main.py --web`) in a pywebview window: Study, Page, Focus and One word views; Light, Sepia and Dark themes; volume; positions shared with the Qt reader.
+- Import from the web reader with engine, voice and model choice, and voice samples read from the book itself.
 - Reproducible MPS Kokoro benchmark with a fixed 20-block input and separate warm-up.
 - Optional Kokoro backend with MPS/CUDA/CPU selection, paragraph synthesis, native English word timestamps, and WhisperX fallback.
 - Backend-aware voices and saved backend/model/voice identity for resumable imports.
